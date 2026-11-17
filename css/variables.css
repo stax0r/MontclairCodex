@@ -1,0 +1,20 @@
+:root {
+    --color-scroll-track: #09090b;
+    --color-scroll-thumb: #27272a;
+    --color-scroll-thumb-hover: #52525b;
+
+    --color-focus-ring: #9333ea;
+    --color-tab-active-bg: #7e22ce;
+    --color-tab-active-text: #ffffff;
+
+    --color-backdrop: rgba(0, 0, 0, 0.75);
+
+    --color-toast-success-bg: #18181b;
+    --color-toast-success-border: #7e22ce;
+    --color-toast-success-text: #f4f4f5;
+
+    --color-toast-error-bg: #450a0a;
+    --color-toast-error-border: #991b1b;
+    --color-toast-error-accent: #ef4444;
+    --color-toast-error-text: #fef2f2;
+}

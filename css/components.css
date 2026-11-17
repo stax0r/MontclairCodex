@@ -1,0 +1,44 @@
+/* Modals */
+dialog::backdrop {
+    background: var(--color-backdrop);
+    backdrop-filter: blur(4px);
+}
+
+dialog[open] {
+    animation: fade-in 0.2s ease-out;
+}
+
+/* Tabs */
+.nav-tab.active {
+    background-color: var(--color-tab-active-bg);
+    color: var(--color-tab-active-text);
+}
+
+/* Toast Notifications */
+.toast-item {
+    pointer-events: auto;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    animation: slide-up 0.3s ease forwards;
+}
+
+.toast-success {
+    background-color: var(--color-toast-success-bg);
+    border: 1px solid var(--color-toast-success-border);
+    color: var(--color-toast-success-text);
+    border-left: 4px solid var(--color-toast-success-border);
+}
+
+.toast-error {
+    background-color: var(--color-toast-error-bg);
+    border: 1px solid var(--color-toast-error-border);
+    color: var(--color-toast-error-text);
+    border-left: 4px solid var(--color-toast-error-accent);
+}
+
+.toast-fade-out {
+    animation: fade-out 0.3s ease forwards;
+}

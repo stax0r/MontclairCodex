@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// TODO: Replace with your actual Firebase configuration
+// TODO: Replace with actual Firebase config
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_AUTH_DOMAIN",
@@ -13,6 +13,8 @@ const firebaseConfig = {
     appId: "YOUR_APP_ID"
 };
 
+// TODO: Replace with actual discord webhook
+export const DISCORD_WEBHOOK_URL = "DISCORD_WEBHOOK_URL";
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
