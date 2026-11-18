@@ -8,7 +8,9 @@ import {
     ref,
     onValue,
     set,
-    update as updateData
+    update as updateData,
+    remove,
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 // ==========================================
@@ -102,6 +104,64 @@ export function updateIngredient(id, { name, price, stock }) {
     }
 
     return updateData(ref(db, `ingredients/${id}`), { name, price, stock });
+}
+
+export function deletePotion(id) {
+    return remove(ref(db, `potions/${id}`));
+}
+
+export function deleteIngredient(id, potions) {
+    const updates = { [`ingredients/${id}`]: null };
+    Object.entries(potions).forEach(([potionId, potion]) => {
+        if (potion.ingredients && Object.prototype.hasOwnProperty.call(potion.ingredients, id)) {
+            updates[`potions/${potionId}/ingredients/${id}`] = null;
+        }
+    });
+    return updateData(ref(db), updates);
+}
+
+export async function brewBatch(batchQueue, potions) {
+    if (batchQueue.length === 0) throw new Error('EMPTY_BATCH');
+
+    const requiredIngredients = new Map();
+    batchQueue.forEach(({ id, qty }) => {
+        if (!Number.isSafeInteger(qty) || qty < 1) throw new Error('INVALID_BATCH_QUANTITY');
+        const potion = potions[id];
+        if (!potion) throw new Error('POTION_NOT_FOUND');
+        const recipe = Object.entries(potion.ingredients || {});
+        if (recipe.length === 0) throw new Error('MISSING_RECIPE');
+
+        recipe.forEach(([ingredientId, quantity]) => {
+            if (!Number.isSafeInteger(quantity) || quantity < 1) {
+                throw new Error('INVALID_RECIPE');
+            }
+            const required = quantity * qty;
+            const combined = (requiredIngredients.get(ingredientId) || 0) + required;
+            if (!Number.isSafeInteger(required) || !Number.isSafeInteger(combined)) {
+                throw new Error('INVALID_BATCH_QUANTITY');
+            }
+            requiredIngredients.set(ingredientId, combined);
+        });
+    });
+
+    const result = await runTransaction(ref(db, 'ingredients'), (ingredients) => {
+        if (!ingredients) return;
+        for (const [ingredientId, quantity] of requiredIngredients) {
+            const ingredient = ingredients[ingredientId];
+            if (!ingredient || !Number.isSafeInteger(ingredient.stock) || ingredient.stock < quantity) return;
+        }
+
+        const updatedIngredients = { ...ingredients };
+        for (const [ingredientId, quantity] of requiredIngredients) {
+            updatedIngredients[ingredientId] = {
+                ...ingredients[ingredientId],
+                stock: ingredients[ingredientId].stock - quantity
+            };
+        }
+        return updatedIngredients;
+    });
+
+    if (!result.committed) throw new Error('INSUFFICIENT_INGREDIENTS');
 }
 
 // ==========================================

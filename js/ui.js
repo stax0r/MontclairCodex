@@ -6,7 +6,8 @@ import {
     removeSatchelItem,
     clearSatchel,
     addBatchItem,
-    removeBatchItem
+    removeBatchItem,
+    clearBatchQueue
 } from "./state.js";
 import {
     loginUser,
@@ -15,7 +16,10 @@ import {
     createIngredient,
     updatePotion,
     updateIngredient,
-    dispatchOrder
+    dispatchOrder,
+    deletePotion,
+    deleteIngredient,
+    brewBatch
 } from "./services.js";
 
 function escapeHTML(str) {
@@ -33,6 +37,8 @@ function sortEntriesByName(entries) {
 
 let recipeRowId = 0;
 let isUserSignedIn = false;
+let pendingDelete = null;
+let isBatchBrewing = false;
 
 // ==========================================
 // TOAST SYSTEM
@@ -362,6 +368,39 @@ function openIngredientEditor(id) {
     openModal('modal-edit-ingredient');
 }
 
+function requestDelete(type, id) {
+    const item = type === 'potion' ? state.potions[id] : state.ingredients[id];
+    if (!item) return;
+
+    pendingDelete = { type, id };
+    document.getElementById('confirm-delete-title').innerText = `Delete ${type}?`;
+    document.getElementById('confirm-delete-message').innerText = type === 'ingredient'
+        ? `Delete "${item.name}"? It will also be removed from all potion recipes. This cannot be undone.`
+        : `Delete "${item.name}"? This cannot be undone.`;
+    openModal('modal-confirm-delete');
+}
+
+async function confirmDelete() {
+    if (!pendingDelete) return;
+
+    const deletion = pendingDelete;
+    try {
+        if (deletion.type === 'potion') {
+            await deletePotion(deletion.id);
+            closeModal('modal-edit-potion');
+            showToast('Potion deleted.');
+        } else {
+            await deleteIngredient(deletion.id, state.potions);
+            closeModal('modal-edit-ingredient');
+            showToast('Ingredient deleted.');
+        }
+        pendingDelete = null;
+        closeModal('modal-confirm-delete');
+    } catch (err) {
+        showToast(`Could not delete ${deletion.type}: ${err.message}`, 'error');
+    }
+}
+
 export function renderBatchSelect() {
     const select = document.getElementById('batch-potion-select');
     if (!select) return;
@@ -375,35 +414,122 @@ export function renderBatchSelect() {
 export function renderBatchQueue() {
     const queueDiv = document.getElementById('batch-queue');
     const resultsDiv = document.getElementById('batch-results');
-    if (!queueDiv || !resultsDiv) return;
+    const brewButton = document.getElementById('btn-brew-batch');
+    const batchInputs = [
+        document.getElementById('batch-potion-select'),
+        document.getElementById('batch-qty'),
+        document.getElementById('btn-add-batch')
+    ];
+    if (!queueDiv || !resultsDiv || !brewButton) return;
+
+    batchInputs.forEach((input) => {
+        if (input) input.disabled = isBatchBrewing;
+    });
 
     if (state.batchQueue.length === 0) {
         queueDiv.innerHTML = '';
-        resultsDiv.innerText = 'Results will appear here.';
+        resultsDiv.innerText = 'Add potions to calculate ingredient cost, profit, and availability.';
+        brewButton.disabled = true;
         return;
     }
 
-    let totalUnits = 0;
-    let totalGold = 0;
+    const requiredIngredients = new Map();
     const summaryLines = [];
+    let totalCost = 0;
+    let totalSale = 0;
+    let costKnown = true;
+    let saleKnown = true;
+    let recipesValid = true;
 
     queueDiv.innerHTML = state.batchQueue.map((item, index) => {
         const p = state.potions[item.id];
-        if (!p) return '';
-        const lineValue = (p.salePrice || 0) * item.qty;
-        totalUnits += item.qty;
-        totalGold += lineValue;
-        summaryLines.push(`• ${item.qty}x ${p.name} (${lineValue}g)`);
+        if (!p) {
+            recipesValid = false;
+            costKnown = false;
+            saleKnown = false;
+            summaryLines.push(`• Unknown potion (${item.id})`);
+            return '';
+        }
+        const recipe = Object.entries(p.ingredients || {});
+        const lineSale = Number.isFinite(p.salePrice) ? p.salePrice * item.qty : 0;
+        if (Number.isFinite(p.salePrice) && Number.isFinite(lineSale)) totalSale += lineSale;
+        else saleKnown = false;
+
+        if (!Number.isSafeInteger(item.qty) || item.qty < 1 || recipe.length === 0) {
+            recipesValid = false;
+            costKnown = false;
+            summaryLines.push(`• ${item.qty}x ${p.name}: recipe missing or invalid`);
+        } else {
+            let lineCost = 0;
+            let lineCostKnown = true;
+            recipe.forEach(([ingredientId, perPotion]) => {
+                if (!Number.isSafeInteger(perPotion) || perPotion < 1) {
+                    recipesValid = false;
+                    lineCostKnown = false;
+                    return;
+                }
+
+                const required = perPotion * item.qty;
+                const combined = (requiredIngredients.get(ingredientId) || 0) + required;
+                if (!Number.isSafeInteger(required) || !Number.isSafeInteger(combined)) {
+                    recipesValid = false;
+                    lineCostKnown = false;
+                    return;
+                }
+                requiredIngredients.set(ingredientId, combined);
+
+                const ingredient = state.ingredients[ingredientId];
+                if (!ingredient) {
+                    recipesValid = false;
+                    lineCostKnown = false;
+                } else if (Number.isFinite(ingredient.price) && ingredient.price >= 0) {
+                    const ingredientCost = ingredient.price * required;
+                    if (Number.isFinite(ingredientCost) && Number.isFinite(lineCost + ingredientCost)) {
+                        lineCost += ingredientCost;
+                    } else {
+                        lineCostKnown = false;
+                    }
+                } else {
+                    lineCostKnown = false;
+                }
+            });
+
+            if (lineCostKnown) totalCost += lineCost;
+            else costKnown = false;
+            const lineProfit = lineCostKnown && Number.isFinite(p.salePrice)
+                ? `profit ${formatGold(lineSale - lineCost)}`
+                : 'profit unknown';
+            summaryLines.push(`• ${item.qty}x ${p.name}: cost ${lineCostKnown ? formatGold(lineCost) : 'unknown'}, sale ${Number.isFinite(p.salePrice) ? formatGold(lineSale) : 'unknown'}, ${lineProfit}`);
+        }
 
         return `
             <span class="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-700 px-2.5 py-1 rounded text-xs">
                 <span>${item.qty}x ${escapeHTML(p.name)}</span>
-                <button type="button" data-action="remove-batch" data-index="${index}" class="text-zinc-400 hover:text-red-400">✕</button>
+                <button type="button" data-action="remove-batch" data-index="${index}" ${isBatchBrewing ? 'disabled' : ''} class="text-zinc-400 hover:text-red-400 disabled:opacity-50">✕</button>
             </span>
         `;
     }).join('');
 
-    resultsDiv.innerText = `${summaryLines.join('\n')}\n\nTotal Brews: ${totalUnits} | Estimated Value: ${totalGold}g`;
+    const shortages = [];
+    for (const [ingredientId, required] of requiredIngredients) {
+        const ingredient = state.ingredients[ingredientId];
+        if (!ingredient || !Number.isSafeInteger(ingredient.stock) || ingredient.stock < required) {
+            shortages.push(`${ingredient?.name || 'Unknown ingredient'} (${ingredient?.stock || 0}/${required})`);
+        }
+    }
+
+    const availability = !recipesValid
+        ? 'Recipe needs attention before brewing.'
+        : shortages.length
+            ? `Not enough ingredients: ${shortages.join(', ')}`
+            : 'All required ingredients are available.';
+    const profit = costKnown && saleKnown ? formatGold(totalSale - totalCost) : 'Unknown';
+    resultsDiv.innerText = `${summaryLines.join('\n')}\n\nIngredient cost: ${costKnown ? formatGold(totalCost) : 'Unknown'}\nSale value: ${saleKnown ? formatGold(totalSale) : 'Unknown'}\nEstimated profit: ${profit}\n${availability}`;
+    brewButton.disabled = isBatchBrewing || !recipesValid || shortages.length > 0;
+}
+
+function formatGold(amount) {
+    return Number.isFinite(amount) ? `${Number(amount.toFixed(2))}g` : 'Unknown';
 }
 
 // ==========================================
@@ -421,6 +547,9 @@ export function initUI() {
     // Modal triggers & close buttons
     document.querySelectorAll('.close-modal').forEach((btn) => {
         btn.addEventListener('click', (e) => e.target.closest('dialog')?.close());
+    });
+    document.getElementById('modal-confirm-delete')?.addEventListener('close', () => {
+        pendingDelete = null;
     });
 
     document.getElementById('price-list')?.addEventListener('click', (e) => {
@@ -450,6 +579,16 @@ export function initUI() {
         const btn = e.target.closest('[data-action="edit-ingredient"]');
         if (btn) openIngredientEditor(btn.dataset.id);
     });
+    document.getElementById('btn-delete-potion')?.addEventListener('click', () => {
+        requestDelete('potion', document.getElementById('edit-pot-id').value);
+    });
+    document.getElementById('btn-delete-ingredient')?.addEventListener('click', () => {
+        requestDelete('ingredient', document.getElementById('edit-ing-id').value);
+    });
+    document.getElementById('btn-cancel-delete')?.addEventListener('click', () => {
+        closeModal('modal-confirm-delete');
+    });
+    document.getElementById('btn-confirm-delete')?.addEventListener('click', confirmDelete);
 
     // Authentication
     document.getElementById('auth-form')?.addEventListener('submit', async (e) => {
@@ -531,6 +670,7 @@ export function initUI() {
 
     // Admin batch simulator
     document.getElementById('btn-add-batch')?.addEventListener('click', () => {
+        if (isBatchBrewing) return;
         const potionId = document.getElementById('batch-potion-select')?.value;
         const qty = Number(document.getElementById('batch-qty')?.value);
         if (!potionId || !Number.isSafeInteger(qty) || qty < 1) return;
@@ -539,10 +679,29 @@ export function initUI() {
     });
 
     document.getElementById('batch-queue')?.addEventListener('click', (e) => {
+        if (isBatchBrewing) return;
         const btn = e.target.closest('[data-action="remove-batch"]');
         if (!btn) return;
         removeBatchItem(Number(btn.dataset.index));
         renderBatchQueue();
+    });
+    document.getElementById('btn-brew-batch')?.addEventListener('click', async (e) => {
+        const button = e.currentTarget;
+        if (button.disabled || isBatchBrewing) return;
+        isBatchBrewing = true;
+        const batch = state.batchQueue.map(({ id, qty }) => ({ id, qty }));
+        renderBatchQueue();
+
+        try {
+            await brewBatch(batch, state.potions);
+            clearBatchQueue();
+            showToast('Batch brewed; ingredient stock deducted.', 'success');
+        } catch (err) {
+            showToast(`Could not brew batch: ${err.message}`, 'error');
+        } finally {
+            isBatchBrewing = false;
+            renderBatchQueue();
+        }
     });
 
     // Admin database forms

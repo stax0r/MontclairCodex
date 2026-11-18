@@ -33,6 +33,7 @@ function bootstrap() {
         renderPriceList();
         renderInventory();
         renderRecipeIngredients();
+        renderBatchQueue();
     });
 }
 

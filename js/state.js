@@ -54,3 +54,7 @@ export function addBatchItem(potionId, qty) {
 export function removeBatchItem(index) {
     state.batchQueue.splice(index, 1);
 }
+
+export function clearBatchQueue() {
+    state.batchQueue = [];
+}
