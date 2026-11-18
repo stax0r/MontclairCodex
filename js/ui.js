@@ -13,7 +13,8 @@ import {
     logoutUser,
     createPotion,
     createIngredient,
-    updateIngredientStock,
+    updatePotion,
+    updateIngredient,
     dispatchOrder
 } from "./services.js";
 
@@ -23,6 +24,11 @@ function escapeHTML(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+function sortEntriesByName(entries) {
+    return entries.sort((left, right) => String(left[1].name || '')
+        .localeCompare(String(right[1].name || ''), undefined, { sensitivity: 'base' }));
 }
 
 let recipeRowId = 0;
@@ -65,7 +71,6 @@ function activateTab(activeTab, inactiveTab, activeView, inactiveView) {
     activeView.classList.remove('hidden');
     inactiveView.classList.add('hidden');
     document.getElementById('view-admin')?.classList.add('hidden');
-    document.getElementById('admin-entry')?.classList.toggle('hidden', !isUserSignedIn);
 }
 
 function openAdminPage() {
@@ -78,27 +83,23 @@ function openAdminPage() {
     document.getElementById('view-store')?.classList.add('hidden');
     document.getElementById('view-codex')?.classList.add('hidden');
     document.getElementById('view-admin')?.classList.remove('hidden');
-    document.getElementById('admin-entry')?.classList.add('hidden');
 }
 
 export function updateAuthUI(user) {
     const btnLogin = document.getElementById('btn-open-login');
     const loggedInView = document.getElementById('logged-in-view');
     const adminAccess = document.getElementById('admin-access');
-    const adminEntry = document.getElementById('admin-entry');
     isUserSignedIn = Boolean(user);
 
     if (user) {
         btnLogin?.classList.add('hidden');
         loggedInView?.classList.remove('hidden');
         adminAccess?.classList.remove('hidden');
-        adminEntry?.classList.remove('hidden');
         closeModal('modal-login');
     } else {
         btnLogin?.classList.remove('hidden');
         loggedInView?.classList.add('hidden');
         adminAccess?.classList.add('hidden');
-        adminEntry?.classList.add('hidden');
         if (!document.getElementById('view-admin')?.classList.contains('hidden')) {
             activateTab(
                 document.getElementById('tab-store'),
@@ -204,7 +205,7 @@ export function renderPriceList() {
     const priceList = document.getElementById('price-list');
     if (!priceList) return;
 
-    const ings = Object.entries(state.ingredients);
+    const ings = sortEntriesByName(Object.entries(state.ingredients));
     if (ings.length === 0) {
         priceList.innerHTML = `<p class="text-zinc-500 text-sm col-span-full">No ingredients logged yet.</p>`;
         return;
@@ -219,42 +220,51 @@ export function renderPriceList() {
 }
 
 export function renderInventory() {
+    const potionList = document.getElementById('potion-inventory');
     const ingredientList = document.getElementById('ingredient-inventory');
+    const potionCount = document.getElementById('potion-count');
     const ingredientCount = document.getElementById('ingredient-stock-count');
-    if (!ingredientList) return;
+    if (!potionList || !ingredientList) return;
 
-    const ingredients = Object.entries(state.ingredients);
+    const potions = sortEntriesByName(Object.entries(state.potions));
+    const ingredients = sortEntriesByName(Object.entries(state.ingredients));
+    if (potionCount) potionCount.innerText = `${potions.length} items`;
     if (ingredientCount) ingredientCount.innerText = `${ingredients.length} items`;
 
+    potionList.innerHTML = potions.length ? potions.map(([id, potion]) => `
+        <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
+            <div class="min-w-0 flex-1">
+                <p class="font-semibold text-sm truncate">${escapeHTML(potion.name)}</p>
+                <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.salePrice || 0}g</p>
+            </div>
+            <button type="button" data-action="edit-potion" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(potion.name)}" title="Edit potion" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
+        </div>
+    `).join('') : '<p class="text-zinc-500 text-sm">No potions in the cellar.</p>';
+
     ingredientList.innerHTML = ingredients.length ? ingredients.map(([id, ingredient]) => `
-        <form data-action="save-ingredient-stock" data-id="${escapeHTML(id)}" class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
+        <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
             <div class="min-w-0 flex-1">
                 <p class="font-semibold text-sm truncate">${escapeHTML(ingredient.name)}</p>
-                <p class="text-xs text-zinc-500">Base value · ${ingredient.price || 0}g</p>
+                <p class="text-xs text-zinc-500">${Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0} units · ${ingredient.price ?? 0}g</p>
             </div>
-            <label class="sr-only" for="ingredient-stock-${escapeHTML(id)}">Available stock (whole units) for ${escapeHTML(ingredient.name)}</label>
-            <input id="ingredient-stock-${escapeHTML(id)}" name="stock" aria-label="Available stock (whole units) for ${escapeHTML(ingredient.name)}" type="number" min="0" step="1" required value="${Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0}" class="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-2 text-sm text-center">
-            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-xs">Save</button>
-        </form>
+            <button type="button" data-action="edit-ingredient" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(ingredient.name)}" title="Edit ingredient" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
+        </div>
     `).join('') : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>';
 }
 
 export function renderRecipeIngredients() {
-    const recipeList = document.getElementById('recipe-ingredients');
-    if (!recipeList) return;
-
-    const options = Object.entries(state.ingredients)
+    const options = sortEntriesByName(Object.entries(state.ingredients))
         .map(([id, ingredient]) => `<option value="${escapeHTML(id)}">${escapeHTML(ingredient.name)}</option>`)
         .join('');
-    recipeList.querySelectorAll('.recipe-ingredient-select').forEach((select) => {
+    document.querySelectorAll('.recipe-ingredients-list .recipe-ingredient-select').forEach((select) => {
         const selectedId = select.value;
         select.innerHTML = `<option value="">Choose an ingredient...</option>${options}`;
         if (state.ingredients[selectedId]) select.value = selectedId;
     });
 }
 
-function addRecipeIngredientRow() {
-    const recipeList = document.getElementById('recipe-ingredients');
+function addRecipeIngredientRow(listId, ingredientId = '', quantity = 1) {
+    const recipeList = document.getElementById(listId);
     if (!recipeList) return;
 
     const rowId = ++recipeRowId;
@@ -274,6 +284,9 @@ function addRecipeIngredientRow() {
     `;
     recipeList.appendChild(row);
     renderRecipeIngredients();
+    row.querySelector('.recipe-ingredient-select').value = ingredientId;
+    row.querySelector('[name="recipeQuantity"]').value =
+        Number.isSafeInteger(quantity) && quantity > 0 ? quantity : '';
 }
 
 function showIngredientPotions(ingredientId) {
@@ -302,6 +315,51 @@ function showIngredientPotions(ingredientId) {
         `).join('') : '<p class="text-sm text-zinc-400">No listed potions currently use this ingredient.</p>';
 
     openModal('modal-ingredient-potions');
+}
+
+function collectRecipe(listId) {
+    const recipe = {};
+    for (const row of document.querySelectorAll(`#${listId} [data-recipe-row]`)) {
+        const ingredientId = row.querySelector('.recipe-ingredient-select').value;
+        const quantity = Number(row.querySelector('[name="recipeQuantity"]').value);
+        if (!ingredientId || !Number.isSafeInteger(quantity) || quantity < 1) {
+            showToast('Choose an ingredient and enter a whole-number recipe amount.', 'error');
+            return null;
+        }
+        recipe[ingredientId] = (recipe[ingredientId] || 0) + quantity;
+        if (!Number.isSafeInteger(recipe[ingredientId])) {
+            showToast('Recipe ingredient total is too large.', 'error');
+            return null;
+        }
+    }
+    return recipe;
+}
+
+function openPotionEditor(id) {
+    const potion = state.potions[id];
+    if (!potion) return;
+
+    document.getElementById('edit-pot-id').value = id;
+    document.getElementById('edit-pot-name').value = potion.name || '';
+    document.getElementById('edit-pot-cat').value = potion.category || '';
+    document.getElementById('edit-pot-price').value = potion.salePrice ?? 0;
+    const recipeList = document.getElementById('edit-pot-recipe-ingredients');
+    recipeList.innerHTML = '';
+    Object.entries(potion.ingredients || {}).forEach(([ingredientId, quantity]) => {
+        addRecipeIngredientRow(recipeList.id, ingredientId, quantity);
+    });
+    openModal('modal-edit-potion');
+}
+
+function openIngredientEditor(id) {
+    const ingredient = state.ingredients[id];
+    if (!ingredient) return;
+
+    document.getElementById('edit-ing-id').value = id;
+    document.getElementById('edit-ing-name').value = ingredient.name || '';
+    document.getElementById('edit-ing-price').value = ingredient.price ?? 0;
+    document.getElementById('edit-ing-stock').value = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
+    openModal('modal-edit-ingredient');
 }
 
 export function renderBatchSelect() {
@@ -374,10 +432,23 @@ export function initUI() {
     document.getElementById('floating-satchel')?.addEventListener('click', () => openModal('modal-satchel'));
     document.getElementById('btn-open-admin-page')?.addEventListener('click', openAdminPage);
     document.getElementById('btn-admin-back')?.addEventListener('click', () => tabStore.click());
-    document.getElementById('btn-add-recipe-ingredient')?.addEventListener('click', addRecipeIngredientRow);
-    document.getElementById('recipe-ingredients')?.addEventListener('click', (e) => {
+    document.getElementById('btn-open-add-potion')?.addEventListener('click', () => openModal('modal-add-potion'));
+    document.getElementById('btn-open-add-ingredient')?.addEventListener('click', () => openModal('modal-add-ingredient'));
+    document.getElementById('btn-add-recipe-ingredient')?.addEventListener('click', () => addRecipeIngredientRow('recipe-ingredients'));
+    document.getElementById('btn-edit-add-recipe-ingredient')?.addEventListener('click', () => addRecipeIngredientRow('edit-pot-recipe-ingredients'));
+    document.querySelectorAll('.recipe-ingredients-list').forEach((list) => list.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="remove-recipe-ingredient"]');
         if (btn) btn.closest('[data-recipe-row]')?.remove();
+    }));
+
+    document.getElementById('potion-inventory')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="edit-potion"]');
+        if (btn) openPotionEditor(btn.dataset.id);
+    });
+
+    document.getElementById('ingredient-inventory')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="edit-ingredient"]');
+        if (btn) openIngredientEditor(btn.dataset.id);
     });
 
     // Authentication
@@ -477,20 +548,8 @@ export function initUI() {
     // Admin database forms
     document.getElementById('admin-add-potion')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const recipe = {};
-        for (const row of document.querySelectorAll('#recipe-ingredients [data-recipe-row]')) {
-            const ingredientId = row.querySelector('.recipe-ingredient-select').value;
-            const quantity = Number(row.querySelector('[name="recipeQuantity"]').value);
-            if (!ingredientId || !Number.isSafeInteger(quantity) || quantity < 1) {
-                showToast('Choose an ingredient and enter a whole-number recipe amount.', 'error');
-                return;
-            }
-            recipe[ingredientId] = (recipe[ingredientId] || 0) + quantity;
-            if (!Number.isSafeInteger(recipe[ingredientId])) {
-                showToast('Recipe ingredient total is too large.', 'error');
-                return;
-            }
-        }
+        const recipe = collectRecipe('recipe-ingredients');
+        if (!recipe) return;
 
         try {
             await createPotion({
@@ -502,6 +561,7 @@ export function initUI() {
             showToast('Potion added.', 'success');
             e.target.reset();
             document.getElementById('recipe-ingredients').innerHTML = '';
+            closeModal('modal-add-potion');
         } catch (err) {
             showToast(`Could not add potion: ${err.message}`, 'error');
         }
@@ -517,21 +577,43 @@ export function initUI() {
             });
             showToast('Ingredient added.', 'success');
             e.target.reset();
+            closeModal('modal-add-ingredient');
         } catch (err) {
             showToast(`Could not add ingredient: ${err.message}`, 'error');
         }
     });
 
-    document.getElementById('ingredient-inventory')?.addEventListener('submit', async (e) => {
-        const form = e.target.closest('[data-action="save-ingredient-stock"]');
-        if (!form) return;
+    document.getElementById('admin-edit-potion')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const recipe = collectRecipe('edit-pot-recipe-ingredients');
+        if (!recipe) return;
+
         try {
-            await updateIngredientStock(form.dataset.id, Number(form.elements.stock.value));
-            showToast('Ingredient stock updated.');
+            await updatePotion(document.getElementById('edit-pot-id').value, {
+                name: document.getElementById('edit-pot-name').value,
+                category: document.getElementById('edit-pot-cat').value,
+                salePrice: Number(document.getElementById('edit-pot-price').value),
+                ingredients: recipe
+            });
+            showToast('Potion updated.');
+            closeModal('modal-edit-potion');
         } catch (err) {
-            showToast(`Could not update ingredient stock: ${err.message}`, 'error');
+            showToast(`Could not update potion: ${err.message}`, 'error');
         }
     });
 
+    document.getElementById('admin-edit-ingredient')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            await updateIngredient(document.getElementById('edit-ing-id').value, {
+                name: document.getElementById('edit-ing-name').value,
+                price: Number(document.getElementById('edit-ing-price').value),
+                stock: Number(document.getElementById('edit-ing-stock').value)
+            });
+            showToast('Ingredient updated.');
+            closeModal('modal-edit-ingredient');
+        } catch (err) {
+            showToast(`Could not update ingredient: ${err.message}`, 'error');
+        }
+    });
 }

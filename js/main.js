@@ -22,6 +22,7 @@ function bootstrap() {
     subscribePotions((potions) => {
         setPotions(potions);
         renderStore();
+        renderInventory();
         renderSatchel();
         renderBatchSelect();
         renderBatchQueue();

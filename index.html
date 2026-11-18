@@ -29,6 +29,7 @@
             <div class="flex items-center gap-3">
                 <button id="btn-open-login" class="bg-purple-900 hover:bg-purple-800 text-white px-4 py-1.5 rounded text-sm font-semibold transition-colors border border-purple-700">Sign In</button>
                 <div id="logged-in-view" class="hidden flex items-center gap-3">
+                    <button type="button" id="btn-open-admin-page" aria-label="Open admin panel" title="Admin panel" class="text-xl rounded p-1.5 hover:bg-zinc-800 transition-colors">⚙️</button>
                     <button id="btn-signout" class="bg-transparent hover:bg-zinc-800 text-zinc-400 px-3 py-1.5 rounded text-sm transition-colors">Sign Out</button>
                 </div>
             </div>
@@ -66,66 +67,44 @@
                 <button type="button" id="btn-admin-back" class="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded text-sm">Back to Store</button>
             </div>
             <div id="admin-access" class="hidden space-y-6">
-                <div class="grid grid-cols-1 gap-6">
-                    <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-bold">Ingredient stock</h3>
-                                <p class="text-xs text-zinc-500">Keep ingredient quantities and base values up to date.</p>
-                            </div>
-                            <span id="ingredient-stock-count" class="text-xs text-zinc-400"></span>
+                <div class="flex flex-wrap gap-3">
+                    <button type="button" id="btn-open-add-potion" class="bg-purple-800 hover:bg-purple-700 px-4 py-2 rounded text-sm font-semibold">+ Add Potion</button>
+                    <button type="button" id="btn-open-add-ingredient" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2 rounded text-sm font-semibold">+ Add Ingredient</button>
+                </div>
+                <details class="bg-zinc-900 border border-zinc-800 rounded-xl">
+                    <summary class="cursor-pointer list-none p-5 flex items-center justify-between font-semibold">
+                        <span>Potions</span>
+                        <span class="flex items-center gap-3"><span id="potion-count" class="text-xs text-zinc-500"></span><span aria-hidden="true" class="text-zinc-500">⌄</span></span>
+                    </summary>
+                    <div id="potion-inventory" class="px-5 pb-5 space-y-3">
+                        <p class="text-zinc-500 text-sm">No potions in the cellar.</p>
+                    </div>
+                </details>
+                <details class="bg-zinc-900 border border-zinc-800 rounded-xl">
+                    <summary class="cursor-pointer list-none p-5 flex items-center justify-between font-semibold">
+                        <span>Ingredients</span>
+                        <span class="flex items-center gap-3"><span id="ingredient-stock-count" class="text-xs text-zinc-500"></span><span aria-hidden="true" class="text-zinc-500">⌄</span></span>
+                    </summary>
+                    <div id="ingredient-inventory" class="px-5 pb-5 space-y-3">
+                        <p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>
+                    </div>
+                </details>
+                <details class="bg-zinc-900 border border-zinc-800 rounded-xl">
+                    <summary class="cursor-pointer list-none p-5 flex items-center justify-between font-semibold">
+                        <span>Batch Brewing Simulator</span><span aria-hidden="true" class="text-zinc-500">⌄</span>
+                    </summary>
+                    <div class="px-5 pb-5">
+                        <div class="flex gap-2 mb-3">
+                            <label for="batch-potion-select" class="sr-only">Potion to brew</label>
+                            <select id="batch-potion-select" name="potionId" class="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"><option value="">Select Potion...</option></select>
+                            <label for="batch-qty" class="sr-only">Batch quantity</label>
+                            <input type="number" id="batch-qty" name="batchQuantity" aria-label="Batch quantity (whole units)" value="1" min="1" step="1" class="w-20 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-center">
+                            <button type="button" id="btn-add-batch" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded text-sm border border-zinc-700">Add</button>
                         </div>
-                        <div id="ingredient-inventory" class="space-y-3">
-                            <p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>
-                        </div>
-                    </section>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                        <h3 class="font-bold mb-3">Add Potion</h3>
-                        <form id="admin-add-potion" class="space-y-2">
-                            <label for="add-pot-name" class="block text-xs text-zinc-400">Potion name</label>
-                            <input type="text" id="add-pot-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <label for="add-pot-cat" class="block text-xs text-zinc-400">Category</label>
-                            <input type="text" id="add-pot-cat" name="category" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <label for="add-pot-price" class="block text-xs text-zinc-400">Price (gold)</label>
-                            <input type="number" id="add-pot-price" name="salePrice" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <div class="space-y-2 pt-2">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="text-sm font-semibold">Recipe ingredients</h4>
-                                    <button type="button" id="btn-add-recipe-ingredient" class="rounded-full border border-purple-700 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-900" aria-label="Add ingredient to recipe">+ Ingredient</button>
-                                </div>
-                                <p class="text-xs text-zinc-500">Add as many ingredients as the recipe needs. Amounts are whole units per potion.</p>
-                                <div id="recipe-ingredients" class="space-y-2"></div>
-                            </div>
-                            <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Potion</button>
-                        </form>
+                        <div id="batch-queue" class="flex flex-wrap gap-2 mb-3"></div>
+                        <div id="batch-results" class="bg-zinc-950 p-3 rounded font-mono text-xs text-zinc-300 min-h-[60px] whitespace-pre-wrap">Results will appear here.</div>
                     </div>
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                        <h3 class="font-bold mb-3">Add Ingredient</h3>
-                        <form id="admin-add-ingredient" class="space-y-2">
-                            <label for="add-ing-name" class="block text-xs text-zinc-400">Ingredient name</label>
-                            <input type="text" id="add-ing-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <label for="add-ing-price" class="block text-xs text-zinc-400">Suggested price (gold)</label>
-                            <input type="number" id="add-ing-price" name="price" min="0" step="any" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <label for="add-ing-stock" class="block text-xs text-zinc-400">Starting stock (whole units)</label>
-                            <input type="number" id="add-ing-stock" name="stock" min="0" step="1" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
-                            <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Ingredient</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                    <h3 class="font-bold text-lg mb-2">Batch Brewing Simulator</h3>
-                    <div class="flex gap-2 mb-3">
-                        <label for="batch-potion-select" class="sr-only">Potion to brew</label>
-                        <select id="batch-potion-select" name="potionId" class="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"><option value="">Select Potion...</option></select>
-                        <label for="batch-qty" class="sr-only">Batch quantity</label>
-                        <input type="number" id="batch-qty" name="batchQuantity" aria-label="Batch quantity (whole units)" value="1" min="1" step="1" class="w-20 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-center">
-                        <button type="button" id="btn-add-batch" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded text-sm border border-zinc-700">Add</button>
-                    </div>
-                    <div id="batch-queue" class="flex flex-wrap gap-2 mb-3"></div>
-                    <div id="batch-results" class="bg-zinc-950 p-3 rounded font-mono text-xs text-zinc-300 min-h-[60px] whitespace-pre-wrap">Results will appear here.</div>
-                </div>
+                </details>
             </div>
         </section>
 
@@ -139,9 +118,6 @@
             </div>
         </section>
 
-        <div id="admin-entry" class="hidden mt-10 border-t border-zinc-800 pt-5">
-            <button type="button" id="btn-open-admin-page" class="text-sm text-zinc-500 hover:text-purple-300 transition-colors">Open admin panel</button>
-        </div>
     </main>
 
     <!-- FLOATING SATCHEL BUTTON -->
@@ -191,6 +167,88 @@
             <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
             <h2 id="ingredient-potion-title" class="text-xl font-bold mb-4 text-purple-400">Potions using this ingredient</h2>
             <div id="ingredient-potion-list" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-add-potion" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-xl m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100 max-h-[90vh] overflow-y-auto">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 class="text-xl font-bold mb-4 text-purple-400">Add Potion</h2>
+            <form id="admin-add-potion" class="space-y-3">
+                <label for="add-pot-name" class="block text-xs text-zinc-400">Potion name</label>
+                <input type="text" id="add-pot-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-pot-cat" class="block text-xs text-zinc-400">Category</label>
+                <input type="text" id="add-pot-cat" name="category" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-pot-price" class="block text-xs text-zinc-400">Price (gold)</label>
+                <input type="number" id="add-pot-price" name="salePrice" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <div class="space-y-2 pt-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold">Recipe ingredients</h3>
+                        <button type="button" id="btn-add-recipe-ingredient" class="rounded-full border border-purple-700 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-900">+ Ingredient</button>
+                    </div>
+                    <p class="text-xs text-zinc-500">Amounts are whole units per potion.</p>
+                    <div id="recipe-ingredients" class="recipe-ingredients-list space-y-2"></div>
+                </div>
+                <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Potion</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-add-ingredient" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 class="text-xl font-bold mb-4 text-purple-400">Add Ingredient</h2>
+            <form id="admin-add-ingredient" class="space-y-3">
+                <label for="add-ing-name" class="block text-xs text-zinc-400">Ingredient name</label>
+                <input type="text" id="add-ing-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-ing-price" class="block text-xs text-zinc-400">Suggested price (gold)</label>
+                <input type="number" id="add-ing-price" name="price" min="0" step="any" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-ing-stock" class="block text-xs text-zinc-400">Starting stock (whole units)</label>
+                <input type="number" id="add-ing-stock" name="stock" min="0" step="1" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Ingredient</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-edit-potion" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-xl m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100 max-h-[90vh] overflow-y-auto">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 class="text-xl font-bold mb-4 text-purple-400">Edit Potion</h2>
+            <form id="admin-edit-potion" class="space-y-3">
+                <input type="hidden" id="edit-pot-id" name="id">
+                <label for="edit-pot-name" class="block text-xs text-zinc-400">Potion name</label>
+                <input type="text" id="edit-pot-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-pot-cat" class="block text-xs text-zinc-400">Category</label>
+                <input type="text" id="edit-pot-cat" name="category" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-pot-price" class="block text-xs text-zinc-400">Price (gold)</label>
+                <input type="number" id="edit-pot-price" name="salePrice" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <div class="space-y-2 pt-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold">Recipe ingredients</h3>
+                        <button type="button" id="btn-edit-add-recipe-ingredient" class="rounded-full border border-purple-700 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-900">+ Ingredient</button>
+                    </div>
+                    <p class="text-xs text-zinc-500">Amounts are whole units per potion.</p>
+                    <div id="edit-pot-recipe-ingredients" class="recipe-ingredients-list space-y-2"></div>
+                </div>
+                <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Changes</button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-edit-ingredient" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 class="text-xl font-bold mb-4 text-purple-400">Edit Ingredient</h2>
+            <form id="admin-edit-ingredient" class="space-y-3">
+                <input type="hidden" id="edit-ing-id" name="id">
+                <label for="edit-ing-name" class="block text-xs text-zinc-400">Ingredient name</label>
+                <input type="text" id="edit-ing-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-ing-price" class="block text-xs text-zinc-400">Suggested price (gold)</label>
+                <input type="number" id="edit-ing-price" name="price" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-ing-stock" class="block text-xs text-zinc-400">Available stock (whole units)</label>
+                <input type="number" id="edit-ing-stock" name="stock" min="0" step="1" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Changes</button>
+            </form>
         </div>
     </dialog>
 

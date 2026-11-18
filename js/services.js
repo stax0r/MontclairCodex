@@ -7,7 +7,8 @@ import {
 import {
     ref,
     onValue,
-    set
+    set,
+    update as updateData
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 // ==========================================
@@ -46,7 +47,7 @@ function validateQuantity(quantity) {
     }
 }
 
-export function createPotion({ name, category, salePrice, ingredients = {} }) {
+function validatePotion({ salePrice, ingredients = {} }) {
     if (!Number.isFinite(salePrice) || salePrice < 0) {
         throw new Error('INVALID_PRICE');
     }
@@ -55,6 +56,10 @@ export function createPotion({ name, category, salePrice, ingredients = {} }) {
             throw new Error('INVALID_RECIPE_QUANTITY');
         }
     }
+}
+
+export function createPotion({ name, category, salePrice, ingredients = {} }) {
+    validatePotion({ salePrice, ingredients });
 
     const id = Date.now().toString();
     return set(ref(db, `potions/${id}`), {
@@ -63,6 +68,16 @@ export function createPotion({ name, category, salePrice, ingredients = {} }) {
         salePrice,
         ingredients,
         hidden: false
+    });
+}
+
+export function updatePotion(id, { name, category, salePrice, ingredients = {} }) {
+    validatePotion({ salePrice, ingredients });
+    return updateData(ref(db, `potions/${id}`), {
+        name,
+        category: category || 'General',
+        salePrice,
+        ingredients: Object.keys(ingredients).length ? ingredients : null
     });
 }
 
@@ -80,9 +95,13 @@ export function createIngredient({ name, price, stock }) {
     });
 }
 
-export function updateIngredientStock(id, stock) {
+export function updateIngredient(id, { name, price, stock }) {
     validateQuantity(stock);
-    return set(ref(db, `ingredients/${id}/stock`), stock);
+    if (!Number.isFinite(price) || price < 0) {
+        throw new Error('INVALID_PRICE');
+    }
+
+    return updateData(ref(db, `ingredients/${id}`), { name, price, stock });
 }
 
 // ==========================================
