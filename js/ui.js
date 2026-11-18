@@ -13,8 +13,8 @@ import {
     logoutUser,
     createPotion,
     createIngredient,
-    dispatchOrder,
-    dispatchMissive
+    updateIngredientStock,
+    dispatchOrder
 } from "./services.js";
 
 function escapeHTML(str) {
@@ -24,6 +24,9 @@ function escapeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
+
+let recipeRowId = 0;
+let isUserSignedIn = false;
 
 // ==========================================
 // TOAST SYSTEM
@@ -55,25 +58,55 @@ export function closeModal(id) {
 }
 
 function activateTab(activeTab, inactiveTab, activeView, inactiveView) {
-    activeTab?.classList.add('active', 'text-white');
-    activeTab?.classList.remove('text-zinc-500');
-    inactiveTab?.classList.remove('active', 'text-white');
-    inactiveTab?.classList.add('text-zinc-500');
-    activeView?.classList.remove('hidden');
-    inactiveView?.classList.add('hidden');
+    activeTab.classList.add('active', 'text-white');
+    activeTab.classList.remove('text-zinc-500');
+    inactiveTab.classList.remove('active', 'text-white');
+    inactiveTab.classList.add('text-zinc-500');
+    activeView.classList.remove('hidden');
+    inactiveView.classList.add('hidden');
+    document.getElementById('view-admin')?.classList.add('hidden');
+    document.getElementById('admin-entry')?.classList.toggle('hidden', !isUserSignedIn);
+}
+
+function openAdminPage() {
+    if (!isUserSignedIn) return;
+
+    document.getElementById('tab-store')?.classList.remove('active', 'text-white');
+    document.getElementById('tab-store')?.classList.add('text-zinc-500');
+    document.getElementById('tab-codex')?.classList.remove('active', 'text-white');
+    document.getElementById('tab-codex')?.classList.add('text-zinc-500');
+    document.getElementById('view-store')?.classList.add('hidden');
+    document.getElementById('view-codex')?.classList.add('hidden');
+    document.getElementById('view-admin')?.classList.remove('hidden');
+    document.getElementById('admin-entry')?.classList.add('hidden');
 }
 
 export function updateAuthUI(user) {
     const btnLogin = document.getElementById('btn-open-login');
     const loggedInView = document.getElementById('logged-in-view');
+    const adminAccess = document.getElementById('admin-access');
+    const adminEntry = document.getElementById('admin-entry');
+    isUserSignedIn = Boolean(user);
 
     if (user) {
         btnLogin?.classList.add('hidden');
         loggedInView?.classList.remove('hidden');
+        adminAccess?.classList.remove('hidden');
+        adminEntry?.classList.remove('hidden');
         closeModal('modal-login');
     } else {
         btnLogin?.classList.remove('hidden');
         loggedInView?.classList.add('hidden');
+        adminAccess?.classList.add('hidden');
+        adminEntry?.classList.add('hidden');
+        if (!document.getElementById('view-admin')?.classList.contains('hidden')) {
+            activateTab(
+                document.getElementById('tab-store'),
+                document.getElementById('tab-codex'),
+                document.getElementById('view-store'),
+                document.getElementById('view-codex')
+            );
+        }
     }
 }
 
@@ -171,18 +204,104 @@ export function renderPriceList() {
     const priceList = document.getElementById('price-list');
     if (!priceList) return;
 
-    const ings = Object.values(state.ingredients);
+    const ings = Object.entries(state.ingredients);
     if (ings.length === 0) {
         priceList.innerHTML = `<p class="text-zinc-500 text-sm col-span-full">No ingredients logged yet.</p>`;
         return;
     }
 
-    priceList.innerHTML = ings.map((ing) => `
-        <div class="bg-zinc-950 border border-zinc-800 p-3 rounded flex justify-between items-center">
-            <span class="text-sm font-bold">${escapeHTML(ing.name)}</span>
-            <span class="text-sm font-mono text-zinc-400">~${ing.price || 'Unknown'}g</span>
-        </div>
+    priceList.innerHTML = ings.map(([id, ingredient]) => `
+        <button type="button" data-action="show-ingredient-potions" data-id="${escapeHTML(id)}" aria-label="Show potions that use ${escapeHTML(ingredient.name)}" class="w-full bg-zinc-950 border border-zinc-800 p-3 rounded flex justify-between items-center text-left hover:border-purple-800 transition-colors">
+            <span class="text-sm font-bold">${escapeHTML(ingredient.name)}</span>
+            <span class="text-sm font-mono text-zinc-400">~${ingredient.price ?? 'Unknown'}g</span>
+        </button>
     `).join('');
+}
+
+export function renderInventory() {
+    const ingredientList = document.getElementById('ingredient-inventory');
+    const ingredientCount = document.getElementById('ingredient-stock-count');
+    if (!ingredientList) return;
+
+    const ingredients = Object.entries(state.ingredients);
+    if (ingredientCount) ingredientCount.innerText = `${ingredients.length} items`;
+
+    ingredientList.innerHTML = ingredients.length ? ingredients.map(([id, ingredient]) => `
+        <form data-action="save-ingredient-stock" data-id="${escapeHTML(id)}" class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
+            <div class="min-w-0 flex-1">
+                <p class="font-semibold text-sm truncate">${escapeHTML(ingredient.name)}</p>
+                <p class="text-xs text-zinc-500">Base value · ${ingredient.price || 0}g</p>
+            </div>
+            <label class="sr-only" for="ingredient-stock-${escapeHTML(id)}">Available stock (whole units) for ${escapeHTML(ingredient.name)}</label>
+            <input id="ingredient-stock-${escapeHTML(id)}" name="stock" aria-label="Available stock (whole units) for ${escapeHTML(ingredient.name)}" type="number" min="0" step="1" required value="${Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0}" class="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-2 text-sm text-center">
+            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-2 rounded text-xs">Save</button>
+        </form>
+    `).join('') : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>';
+}
+
+export function renderRecipeIngredients() {
+    const recipeList = document.getElementById('recipe-ingredients');
+    if (!recipeList) return;
+
+    const options = Object.entries(state.ingredients)
+        .map(([id, ingredient]) => `<option value="${escapeHTML(id)}">${escapeHTML(ingredient.name)}</option>`)
+        .join('');
+    recipeList.querySelectorAll('.recipe-ingredient-select').forEach((select) => {
+        const selectedId = select.value;
+        select.innerHTML = `<option value="">Choose an ingredient...</option>${options}`;
+        if (state.ingredients[selectedId]) select.value = selectedId;
+    });
+}
+
+function addRecipeIngredientRow() {
+    const recipeList = document.getElementById('recipe-ingredients');
+    if (!recipeList) return;
+
+    const rowId = ++recipeRowId;
+    const row = document.createElement('div');
+    row.dataset.recipeRow = 'true';
+    row.className = 'grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8rem_auto] gap-2 items-end bg-zinc-950 border border-zinc-800 rounded-lg p-3';
+    row.innerHTML = `
+        <div>
+            <label for="recipe-ingredient-${rowId}" class="block text-xs text-zinc-400 mb-1">Ingredient</label>
+            <select id="recipe-ingredient-${rowId}" name="recipeIngredient" required class="recipe-ingredient-select w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm"></select>
+        </div>
+        <div>
+            <label for="recipe-quantity-${rowId}" class="block text-xs text-zinc-400 mb-1">Units per potion</label>
+            <input id="recipe-quantity-${rowId}" name="recipeQuantity" type="number" min="1" step="1" value="1" required class="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm">
+        </div>
+        <button type="button" data-action="remove-recipe-ingredient" aria-label="Remove ingredient from recipe" class="justify-self-end rounded border border-zinc-700 px-3 py-2 text-zinc-400 hover:text-red-400" title="Remove ingredient">−</button>
+    `;
+    recipeList.appendChild(row);
+    renderRecipeIngredients();
+}
+
+function showIngredientPotions(ingredientId) {
+    const ingredient = state.ingredients[ingredientId];
+    if (!ingredient) return;
+
+    const title = document.getElementById('ingredient-potion-title');
+    const list = document.getElementById('ingredient-potion-list');
+    if (!title || !list) return;
+
+    title.innerText = `Potions using ${ingredient.name}`;
+    const matches = Object.entries(state.potions).filter(([, potion]) => (
+        !potion.hidden &&
+        Number.isSafeInteger(potion.ingredients?.[ingredientId]) &&
+        potion.ingredients[ingredientId] > 0
+    ));
+
+    list.innerHTML = matches.length ? matches.map(([, potion]) => `
+            <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between gap-4">
+                <div>
+                    <p class="font-semibold">${escapeHTML(potion.name)}</p>
+                    <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.ingredients[ingredientId]} units per potion</p>
+                </div>
+                <span class="text-xs text-purple-300">Custom orders welcome</span>
+            </div>
+        `).join('') : '<p class="text-sm text-zinc-400">No listed potions currently use this ingredient.</p>';
+
+    openModal('modal-ingredient-potions');
 }
 
 export function renderBatchSelect() {
@@ -238,17 +357,28 @@ export function initUI() {
     const viewStore = document.getElementById('view-store');
     const viewCodex = document.getElementById('view-codex');
 
-    tabStore?.addEventListener('click', () => activateTab(tabStore, tabCodex, viewStore, viewCodex));
-    tabCodex?.addEventListener('click', () => activateTab(tabCodex, tabStore, viewCodex, viewStore));
+    tabStore.addEventListener('click', () => activateTab(tabStore, tabCodex, viewStore, viewCodex));
+    tabCodex.addEventListener('click', () => activateTab(tabCodex, tabStore, viewCodex, viewStore));
 
     // Modal triggers & close buttons
     document.querySelectorAll('.close-modal').forEach((btn) => {
         btn.addEventListener('click', (e) => e.target.closest('dialog')?.close());
     });
 
+    document.getElementById('price-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="show-ingredient-potions"]');
+        if (btn) showIngredientPotions(btn.dataset.id);
+    });
+
     document.getElementById('btn-open-login')?.addEventListener('click', () => openModal('modal-login'));
     document.getElementById('floating-satchel')?.addEventListener('click', () => openModal('modal-satchel'));
-    document.getElementById('btn-open-admin')?.addEventListener('click', () => openModal('modal-admin'));
+    document.getElementById('btn-open-admin-page')?.addEventListener('click', openAdminPage);
+    document.getElementById('btn-admin-back')?.addEventListener('click', () => tabStore.click());
+    document.getElementById('btn-add-recipe-ingredient')?.addEventListener('click', addRecipeIngredientRow);
+    document.getElementById('recipe-ingredients')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="remove-recipe-ingredient"]');
+        if (btn) btn.closest('[data-recipe-row]')?.remove();
+    });
 
     // Authentication
     document.getElementById('auth-form')?.addEventListener('submit', async (e) => {
@@ -328,31 +458,11 @@ export function initUI() {
         }
     });
 
-    // Codex missive submission
-    document.getElementById('missive-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        try {
-            await dispatchMissive({
-                author: document.getElementById('missive-author').value,
-                type: document.getElementById('missive-type').value,
-                content: document.getElementById('missive-content').value
-            });
-            showToast('Missive dispatched to the keeper.', 'success');
-            e.target.reset();
-        } catch (err) {
-            if (err.message === 'WEBHOOK_UNCONFIGURED') {
-                showToast('Discord Webhook not configured.', 'error');
-            } else {
-                showToast('Network error.', 'error');
-            }
-        }
-    });
-
     // Admin batch simulator
     document.getElementById('btn-add-batch')?.addEventListener('click', () => {
         const potionId = document.getElementById('batch-potion-select')?.value;
-        const qty = parseInt(document.getElementById('batch-qty')?.value, 10) || 1;
-        if (!potionId || qty < 1) return;
+        const qty = Number(document.getElementById('batch-qty')?.value);
+        if (!potionId || !Number.isSafeInteger(qty) || qty < 1) return;
         addBatchItem(potionId, qty);
         renderBatchQueue();
     });
@@ -367,22 +477,61 @@ export function initUI() {
     // Admin database forms
     document.getElementById('admin-add-potion')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        await createPotion({
-            name: document.getElementById('add-pot-name').value,
-            category: document.getElementById('add-pot-cat').value,
-            salePrice: parseFloat(document.getElementById('add-pot-price').value)
-        });
-        showToast('Potion added.', 'success');
-        e.target.reset();
+        const recipe = {};
+        for (const row of document.querySelectorAll('#recipe-ingredients [data-recipe-row]')) {
+            const ingredientId = row.querySelector('.recipe-ingredient-select').value;
+            const quantity = Number(row.querySelector('[name="recipeQuantity"]').value);
+            if (!ingredientId || !Number.isSafeInteger(quantity) || quantity < 1) {
+                showToast('Choose an ingredient and enter a whole-number recipe amount.', 'error');
+                return;
+            }
+            recipe[ingredientId] = (recipe[ingredientId] || 0) + quantity;
+            if (!Number.isSafeInteger(recipe[ingredientId])) {
+                showToast('Recipe ingredient total is too large.', 'error');
+                return;
+            }
+        }
+
+        try {
+            await createPotion({
+                name: document.getElementById('add-pot-name').value,
+                category: document.getElementById('add-pot-cat').value,
+                salePrice: Number(document.getElementById('add-pot-price').value),
+                ingredients: recipe
+            });
+            showToast('Potion added.', 'success');
+            e.target.reset();
+            document.getElementById('recipe-ingredients').innerHTML = '';
+        } catch (err) {
+            showToast(`Could not add potion: ${err.message}`, 'error');
+        }
     });
 
     document.getElementById('admin-add-ingredient')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        await createIngredient({
-            name: document.getElementById('add-ing-name').value,
-            price: parseFloat(document.getElementById('add-ing-price').value || 0)
-        });
-        showToast('Ingredient added.', 'success');
-        e.target.reset();
+        try {
+            await createIngredient({
+                name: document.getElementById('add-ing-name').value,
+                price: Number(document.getElementById('add-ing-price').value),
+                stock: Number(document.getElementById('add-ing-stock').value)
+            });
+            showToast('Ingredient added.', 'success');
+            e.target.reset();
+        } catch (err) {
+            showToast(`Could not add ingredient: ${err.message}`, 'error');
+        }
     });
+
+    document.getElementById('ingredient-inventory')?.addEventListener('submit', async (e) => {
+        const form = e.target.closest('[data-action="save-ingredient-stock"]');
+        if (!form) return;
+        e.preventDefault();
+        try {
+            await updateIngredientStock(form.dataset.id, Number(form.elements.stock.value));
+            showToast('Ingredient stock updated.');
+        } catch (err) {
+            showToast(`Could not update ingredient stock: ${err.message}`, 'error');
+        }
+    });
+
 }

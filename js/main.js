@@ -6,6 +6,8 @@ import {
     renderStore,
     renderSatchel,
     renderPriceList,
+    renderInventory,
+    renderRecipeIngredients,
     renderBatchSelect,
     renderBatchQueue
 } from "./ui.js";
@@ -28,6 +30,8 @@ function bootstrap() {
     subscribeIngredients((ingredients) => {
         setIngredients(ingredients);
         renderPriceList();
+        renderInventory();
+        renderRecipeIngredients();
     });
 }
 

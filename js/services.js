@@ -40,22 +40,49 @@ export function subscribeIngredients(callback) {
     });
 }
 
-export function createPotion({ name, category, salePrice }) {
+function validateQuantity(quantity) {
+    if (!Number.isSafeInteger(quantity) || quantity < 0) {
+        throw new Error('INVALID_QUANTITY');
+    }
+}
+
+export function createPotion({ name, category, salePrice, ingredients = {} }) {
+    if (!Number.isFinite(salePrice) || salePrice < 0) {
+        throw new Error('INVALID_PRICE');
+    }
+    for (const quantity of Object.values(ingredients)) {
+        if (!Number.isSafeInteger(quantity) || quantity < 1) {
+            throw new Error('INVALID_RECIPE_QUANTITY');
+        }
+    }
+
     const id = Date.now().toString();
     return set(ref(db, `potions/${id}`), {
         name,
         category: category || 'General',
         salePrice,
+        ingredients,
         hidden: false
     });
 }
 
-export function createIngredient({ name, price }) {
+export function createIngredient({ name, price, stock }) {
+    validateQuantity(stock);
+    if (!Number.isFinite(price) || price < 0) {
+        throw new Error('INVALID_PRICE');
+    }
+
     const id = Date.now().toString();
     return set(ref(db, `ingredients/${id}`), {
         name,
-        price: price || 0
+        price,
+        stock
     });
+}
+
+export function updateIngredientStock(id, stock) {
+    validateQuantity(stock);
+    return set(ref(db, `ingredients/${id}/stock`), stock);
 }
 
 // ==========================================
@@ -113,12 +140,4 @@ export async function dispatchOrder({ name, discord, notes, satchel, potions }) 
     };
 
     await postWebhook(payload);
-}
-
-export async function dispatchMissive({ author, type, content }) {
-    const contentMessage = type === 'price'
-        ? `💰 **Codex Price Missive**\nFrom: ${author}\n\n${content}`
-        : `📜 **Codex Letter**\nFrom: ${author}\n\n"${content}"`;
-
-    await postWebhook({ content: contentMessage });
 }
