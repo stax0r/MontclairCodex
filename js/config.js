@@ -2,15 +2,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// TODO: Replace with actual Firebase config
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDI97czywdHlXzQxnAwrTopGduM3y2_ctk",
+    authDomain: "montclaircodex.firebaseapp.com",
+    databaseURL: "https://montclaircodex-default-rtdb.firebaseio.com",
+    projectId: "montclaircodex",
+    storageBucket: "montclaircodex.firebasestorage.app",
+    messagingSenderId: "961628471163",
+    appId: "1:961628471163:web:7dd92578114b7b002287de"
 };
 
 // TODO: Replace with actual discord webhook
