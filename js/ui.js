@@ -3,6 +3,9 @@ import {
     setCategory,
     setCodexCategory,
     setSearchQuery,
+    setCodexSearchQuery,
+    setCodexIngredientSearchQuery,
+    setAdminIngredientSearchQuery,
     addSatchelItem,
     removeSatchelItem,
     setSatchelItemQuantity,
@@ -55,6 +58,35 @@ function getIngredientDescription(ingredient) {
     return typeof ingredient.locations === 'string' ? ingredient.locations.trim() : '';
 }
 
+function formatIngredientUnitPrice(price) {
+    return `~${price ?? 'Unknown'}g / unit`;
+}
+
+function renderIngredientPrice(price, priceClass) {
+    const numericPrice = Number(price);
+    if (Number.isFinite(numericPrice) && numericPrice > 0) {
+        return `<span class="${priceClass}">${formatIngredientUnitPrice(numericPrice)}</span>`;
+    }
+    return '<span class="text-right text-xs text-zinc-500">No fair price found yet</span>';
+}
+
+function getWantedIngredientUnitPrice(suggestedPrice) {
+    const numericPrice = Number(suggestedPrice);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) return null;
+    return Number((numericPrice * 3 / 5).toFixed(2));
+}
+
+function renderWantedIngredientPrice(suggestedPrice) {
+    const price = getWantedIngredientUnitPrice(suggestedPrice);
+    return price === null
+        ? '<span class="text-right text-xs text-zinc-500">No fair price found yet</span>'
+        : `<span class="font-mono text-sm text-purple-300">${price.toFixed(2)}g / unit</span>`;
+}
+
+function getIngredientDescriptionOrPlaceholder(ingredient) {
+    return getIngredientDescription(ingredient) || 'No description has been recorded for this ingredient yet.';
+}
+
 let recipeRowId = 0;
 let isUserSignedIn = false;
 let pendingDelete = null;
@@ -90,6 +122,7 @@ export function closeModal(id) {
 }
 
 function activateTab(activeTab, inactiveTab, activeView, inactiveView) {
+    document.body.dataset.theme = activeTab.id === 'tab-codex' ? 'codex' : 'store';
     activeTab.classList.add('active', 'text-white');
     activeTab.classList.remove('text-zinc-500');
     inactiveTab.classList.remove('active', 'text-white');
@@ -113,6 +146,7 @@ function activatePanelTab(activeTab, inactiveTab, activePanel, inactivePanel) {
 function openAdminPage() {
     if (!isUserSignedIn) return;
 
+    document.body.dataset.theme = 'store';
     document.getElementById('tab-store')?.classList.remove('active', 'text-white');
     document.getElementById('tab-store')?.classList.add('text-zinc-500');
     document.getElementById('tab-codex')?.classList.remove('active', 'text-white');
@@ -195,16 +229,18 @@ export function renderStore() {
     }
 
     grid.innerHTML = filtered.map((p) => `
-        <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex flex-col justify-between hover:border-purple-900 transition-colors">
-            <div>
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-xs font-bold text-purple-500 uppercase tracking-wider">${escapeHTML(p.category || 'General')}</span>
-                    <span class="font-mono text-purple-300 font-bold">${p.salePrice || 0}g</span>
+        <article class="potion-card">
+            <div class="potion-card__main">
+                <div class="potion-card__heading-row">
+                    <div class="min-w-0">
+                        <p class="potion-card__category">${escapeHTML(p.category || 'General')}</p>
+                        <h3 class="potion-card__title">${escapeHTML(p.name)}</h3>
+                    </div>
+                    <span class="potion-card__price">${p.salePrice || 0}g</span>
                 </div>
-                <h3 class="text-lg font-bold text-zinc-100 mb-1">${escapeHTML(p.name)}</h3>
-                ${p.description ? `<p class="text-xs text-zinc-400 mb-4 line-clamp-3">${escapeHTML(p.description)}</p>` : ''}
+                ${p.description ? `<p class="potion-card__description line-clamp-3">${escapeHTML(p.description)}</p>` : ''}
             </div>
-            <div class="flex gap-2">
+            <div class="potion-card__footer flex gap-2">
                 <div class="flex items-center rounded border border-zinc-800 bg-zinc-950">
                     <button type="button" data-action="adjust-store-quantity" data-delta="-1" aria-label="Decrease quantity of ${escapeHTML(p.name)}" class="px-2 py-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white">−</button>
                     <input type="number" min="1" step="1" value="1" aria-label="Quantity of ${escapeHTML(p.name)}" class="w-12 bg-transparent px-1 py-1.5 text-sm text-center">
@@ -212,7 +248,7 @@ export function renderStore() {
                 </div>
                 <button type="button" data-action="add-satchel" data-id="${escapeHTML(p.id)}" class="flex-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 py-1.5 rounded text-sm text-zinc-200 transition-colors">Add to Satchel</button>
             </div>
-        </div>
+        </article>
     `).join('');
 }
 
@@ -306,20 +342,26 @@ export function renderPriceList() {
         return;
     }
 
-    const ings = sortEntriesByName(Object.entries(state.ingredients));
+    const allIngredients = Object.entries(state.ingredients);
+    const ings = sortEntriesByName(allIngredients.filter(([, ingredient]) => (
+        !state.codexIngredientSearchQuery ||
+        String(ingredient.name || '').toLowerCase().includes(state.codexIngredientSearchQuery)
+    )));
     if (ings.length === 0) {
-        priceList.innerHTML = `<p class="text-zinc-500 text-sm col-span-full">No ingredients logged yet.</p>`;
+        priceList.innerHTML = `<p class="text-zinc-500 text-sm col-span-full">${allIngredients.length ? 'No ingredients match your search.' : 'No ingredients logged yet.'}</p>`;
         return;
     }
 
     priceList.innerHTML = ings.map(([id, ingredient]) => `
-        <article class="bg-zinc-950 border border-zinc-800 p-3 rounded">
-            <div class="flex justify-between items-center gap-3">
-                <span class="text-sm font-bold">${escapeHTML(ingredient.name)}</span>
-                <span class="text-sm font-mono text-zinc-400">~${ingredient.price ?? 'Unknown'}g</span>
+        <article class="ingredient-card">
+            <div class="ingredient-card__main">
+                <div class="ingredient-card__heading-row">
+                    <h3 class="ingredient-card__title">${escapeHTML(ingredient.name)}</h3>
+                    ${renderIngredientPrice(ingredient.price, 'text-sm font-mono text-purple-400')}
+                </div>
+                <p class="ingredient-card__description">${escapeHTML(getIngredientDescriptionOrPlaceholder(ingredient))}</p>
             </div>
-            ${getIngredientDescription(ingredient) ? `<p class="mt-2 line-clamp-2 text-sm text-zinc-400">${escapeHTML(getIngredientDescription(ingredient))}</p>` : ''}
-            <button type="button" data-action="show-ingredient-details" data-id="${escapeHTML(id)}" aria-label="More details about ${escapeHTML(ingredient.name)}" class="mt-2 w-full flex justify-between items-center border-t border-zinc-800 pt-2 text-left text-xs text-purple-300 hover:text-purple-200">
+            <button type="button" data-action="show-ingredient-details" data-id="${escapeHTML(id)}" aria-label="More details about ${escapeHTML(ingredient.name)}" class="ingredient-card__details">
                 <span>More details</span>
                 <span aria-hidden="true">›</span>
             </button>
@@ -340,7 +382,7 @@ export function renderStoreIngredients() {
     const lowStockIngredients = sortEntriesByName(Object.entries(state.ingredients).filter(([, ingredient]) => {
         const stock = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
         const threshold = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
-        return stock < threshold;
+        return stock < threshold || ingredient.alwaysBuying === true;
     }));
 
     if (lowStockIngredients.length === 0) {
@@ -348,13 +390,24 @@ export function renderStoreIngredients() {
         return;
     }
 
-    ingredientList.innerHTML = lowStockIngredients.map(([, ingredient]) => `
-            <article class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
-                <div class="flex justify-between items-start gap-3">
-                    <h3 class="font-bold text-zinc-100">${escapeHTML(ingredient.name)}</h3>
-                    <span class="font-mono text-sm text-purple-300">~${ingredient.price ?? 'Unknown'}g</span>
+    ingredientList.innerHTML = lowStockIngredients.map(([id, ingredient]) => `
+            <article class="ingredient-card">
+                <div class="ingredient-card__main">
+                    <div class="ingredient-card__heading-row">
+                        <h3 class="ingredient-card__title">${escapeHTML(ingredient.name)}</h3>
+                        ${ingredient.alwaysBuying === true ? '<span class="ingredient-card__tag">Always buying</span>' : ''}
+                        ${renderWantedIngredientPrice(ingredient.price)}
+                    </div>
+                    <p class="ingredient-card__description">${escapeHTML(getIngredientDescriptionOrPlaceholder(ingredient))}</p>
                 </div>
-                ${getIngredientDescription(ingredient) ? `<p class="mt-2 whitespace-pre-line text-sm text-zinc-400">${escapeHTML(getIngredientDescription(ingredient))}</p>` : ''}
+                <div class="ingredient-card__footer">
+                    <div class="ingredient-card__sell-controls">
+                        <label class="sr-only" for="sell-quantity-${escapeHTML(id)}">Quantity of ${escapeHTML(ingredient.name)} to sell</label>
+                        <input id="sell-quantity-${escapeHTML(id)}" data-sell-quantity type="number" min="1" step="1" value="1" class="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-center">
+                        <button type="button" data-action="calculate-ingredient-sale" data-id="${escapeHTML(id)}" class="flex-1 rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-700">Sell</button>
+                    </div>
+                    <p data-sell-quote hidden role="status" aria-live="polite" class="mt-2 text-xs text-zinc-400"></p>
+                </div>
             </article>
     `).join('');
 }
@@ -390,32 +443,40 @@ export function renderCodexPotions() {
     const categoryPotions = state.selectedCodexCategory === 'All'
         ? visiblePotions
         : visiblePotions.filter(([, potion]) => (potion.category || 'General') === state.selectedCodexCategory);
-    if (categoryPotions.length === 0) {
-        potionList.innerHTML = visiblePotions.length
-            ? '<p class="text-zinc-500 text-sm col-span-full">No potions found in this category.</p>'
-            : '<p class="text-zinc-500 text-sm col-span-full">No potions logged yet.</p>';
+    const filteredPotions = sortEntriesByName(categoryPotions.filter(([, potion]) => (
+        !state.codexSearchQuery || String(potion.name || '').toLowerCase().includes(state.codexSearchQuery)
+    )));
+    if (filteredPotions.length === 0) {
+        potionList.innerHTML = !visiblePotions.length
+            ? '<p class="text-zinc-500 text-sm col-span-full">No potions logged yet.</p>'
+            : categoryPotions.length === 0
+                ? '<p class="text-zinc-500 text-sm col-span-full">No potions found in this category.</p>'
+                : '<p class="text-zinc-500 text-sm col-span-full">No potions match your search.</p>';
         return;
     }
 
-    const potions = sortEntriesByName(categoryPotions);
-    potionList.innerHTML = potions.map(([, potion]) => {
+    potionList.innerHTML = filteredPotions.map(([, potion]) => {
         const recipe = Object.entries(potion.ingredients || {});
         return `
-            <article class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
-                <div class="mb-2">
-                    <h3 class="font-bold text-zinc-100">${escapeHTML(potion.name)}</h3>
-                    <p class="text-xs text-purple-400">${escapeHTML(potion.category || 'General')}</p>
+            <article class="potion-card">
+                <div class="potion-card__main">
+                    <div class="potion-card__heading-row">
+                        <div class="min-w-0">
+                            <p class="potion-card__category">${escapeHTML(potion.category || 'General')}</p>
+                            <h3 class="potion-card__title">${escapeHTML(potion.name)}</h3>
+                        </div>
+                    </div>
+                    <p class="potion-card__description">${escapeHTML(potion.description || 'No description provided.')}</p>
                 </div>
-                <p class="text-sm text-zinc-400 whitespace-pre-wrap">${escapeHTML(potion.description || 'No description provided.')}</p>
                 ${potion.hideRecipe
-                    ? '<p class="mt-3 text-xs text-zinc-500">Recipe kept secret.</p>'
-                    : `<div class="mt-3">
-                        <h4 class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Ingredients</h4>
+                    ? '<p class="potion-card__footer potion-card__secret">Recipe kept secret.</p>'
+                    : `<div class="potion-card__footer potion-card__recipe">
+                        <h4>Ingredients</h4>
                         ${recipe.length
-                            ? `<ul class="mt-1 space-y-1 text-sm text-zinc-300">${recipe.map(([id, quantity]) => `
-                                <li>${escapeHTML(state.ingredients[id]?.name || 'Unknown ingredient')} · ${escapeHTML(quantity)} units</li>
+                            ? `<ul>${recipe.map(([id, quantity]) => `
+                                <li>${escapeHTML(state.ingredients[id]?.name || 'Unknown ingredient')} <span>· ${escapeHTML(quantity)} units</span></li>
                             `).join('')}</ul>`
-                            : '<p class="mt-1 text-sm text-zinc-500">No ingredients listed.</p>'}
+                            : '<p>No ingredients listed.</p>'}
                     </div>`}
             </article>
         `;
@@ -451,6 +512,10 @@ export function renderInventory() {
 
         return String(leftIngredient.name || '').localeCompare(String(rightIngredient.name || ''), undefined, { sensitivity: 'base' });
     });
+    const filteredIngredients = ingredients.filter(([, ingredient]) => (
+        !state.adminIngredientSearchQuery ||
+        String(ingredient.name || '').toLowerCase().includes(state.adminIngredientSearchQuery)
+    ));
     if (potionCount) {
         potionCount.innerText = state.potionsLoadError ? 'Unavailable' : state.potionsLoaded ? `${potions.length} items` : 'Loading...';
     }
@@ -463,14 +528,14 @@ export function renderInventory() {
         <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
             <div class="min-w-0 flex-1">
                 <p class="font-semibold text-sm truncate">${escapeHTML(potion.name)}</p>
-                <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.salePrice || 0}g${potion.hidden ? ' · Hidden from storefront' : ''}${potion.hideRecipe ? ' · Recipe hidden in Codex' : ''}${potion.hideFromCodex ? ' · Hidden from Codex' : ''}</p>
+                <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.salePrice || 0}g${potion.hidden ? ' · Hidden from The Shop' : ''}${potion.hideRecipe ? ' · Recipe hidden in Codex' : ''}${potion.hideFromCodex ? ' · Hidden from Codex' : ''}</p>
             </div>
             <button type="button" data-action="edit-potion" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(potion.name)}" title="Edit potion" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
         </div>
     `).join('') : '<p class="text-zinc-500 text-sm">No potions in the cellar.</p>');
 
     const ingredientStatus = getDataStatusMessage('ingredients', state.ingredientsLoaded, state.ingredientsLoadError);
-    ingredientList.innerHTML = ingredientStatus || (ingredients.length ? ingredients.map(([id, ingredient]) => {
+    ingredientList.innerHTML = ingredientStatus || (filteredIngredients.length ? filteredIngredients.map(([id, ingredient]) => {
         const stock = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
         const threshold = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
         const lowStock = stock < threshold;
@@ -480,8 +545,9 @@ export function renderInventory() {
                 <div class="flex items-center gap-2">
                     <p class="font-semibold text-sm truncate">${escapeHTML(ingredient.name)}</p>
                     ${lowStock ? '<span class="shrink-0 rounded bg-amber-950 px-2 py-0.5 text-xs font-semibold text-amber-300">Low stock</span>' : ''}
+                    ${ingredient.alwaysBuying === true ? '<span class="shrink-0 rounded bg-purple-950 px-2 py-0.5 text-xs font-semibold text-purple-300">Always buying</span>' : ''}
                 </div>
-                <p class="text-xs text-zinc-500">${stock} units · ${ingredient.price ?? 0}g · Threshold: ${threshold}</p>
+                <p class="text-xs text-zinc-500">${stock} units · ${renderIngredientPrice(ingredient.price, 'text-xs text-zinc-500')} · Threshold: ${threshold}</p>
             </div>
             <div class="flex items-center gap-2">
                 <input type="number" min="1" step="1" value="1" aria-label="Units to add to ${escapeHTML(ingredient.name)}" class="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-center">
@@ -490,7 +556,9 @@ export function renderInventory() {
             </div>
         </div>
     `;
-    }).join('') : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>');
+    }).join('') : ingredients.length
+        ? '<p class="text-zinc-500 text-sm">No ingredients match your search.</p>'
+        : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>');
 }
 
 export function renderRecipeIngredients() {
@@ -612,6 +680,7 @@ function openIngredientEditor(id) {
     document.getElementById('edit-ing-price').value = ingredient.price ?? 0;
     document.getElementById('edit-ing-stock').value = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
     document.getElementById('edit-ing-threshold').value = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
+    document.getElementById('edit-ing-always-buying').checked = ingredient.alwaysBuying === true;
     openModal('modal-edit-ingredient');
 }
 
@@ -840,6 +909,39 @@ export function initUI() {
         if (btn) showIngredientDetails(btn.dataset.id);
     });
 
+    document.getElementById('store-ingredient-list')?.addEventListener('click', (e) => {
+        const button = e.target.closest('[data-action="calculate-ingredient-sale"]');
+        if (!button) return;
+
+        const card = button.closest('.ingredient-card');
+        const quantityInput = card.querySelector('[data-sell-quantity]');
+        const quote = card.querySelector('[data-sell-quote]');
+        const ingredient = state.ingredients[button.dataset.id];
+        const quantity = Number(quantityInput.value);
+        quote.hidden = false;
+
+        if (!Number.isSafeInteger(quantity) || quantity < 1) {
+            quantityInput.setAttribute('aria-invalid', 'true');
+            quote.textContent = 'Enter a whole number of units to sell.';
+            return;
+        }
+
+        quantityInput.removeAttribute('aria-invalid');
+        if (!ingredient) {
+            quote.textContent = 'This ingredient is no longer available.';
+            return;
+        }
+
+        const unitPrice = getWantedIngredientUnitPrice(ingredient.price);
+        if (unitPrice === null) {
+            quote.textContent = 'A fair price has not been set, so an offer cannot be calculated yet.';
+            return;
+        }
+
+        const total = Number((unitPrice * quantity).toFixed(2));
+        quote.textContent = `Offer for ${quantity} ${quantity === 1 ? 'unit' : 'units'}: ${total.toFixed(2)}g`;
+    });
+
     document.getElementById('btn-open-login')?.addEventListener('click', () => openModal('modal-login'));
     document.getElementById('floating-satchel')?.addEventListener('click', () => openModal('modal-satchel'));
     document.getElementById('btn-open-admin-page')?.addEventListener('click', openAdminPage);
@@ -919,6 +1021,21 @@ export function initUI() {
     document.getElementById('store-search')?.addEventListener('input', (e) => {
         setSearchQuery(e.target.value);
         renderStore();
+    });
+
+    document.getElementById('codex-search')?.addEventListener('input', (e) => {
+        setCodexSearchQuery(e.target.value);
+        renderCodexPotions();
+    });
+
+    document.getElementById('codex-ingredient-search')?.addEventListener('input', (e) => {
+        setCodexIngredientSearchQuery(e.target.value);
+        renderPriceList();
+    });
+
+    document.getElementById('admin-ingredient-search')?.addEventListener('input', (e) => {
+        setAdminIngredientSearchQuery(e.target.value);
+        renderInventory();
     });
 
     document.getElementById('category-filters')?.addEventListener('click', (e) => {
@@ -1104,7 +1221,8 @@ export function initUI() {
                 description: document.getElementById('add-ing-description').value,
                 price: Number(document.getElementById('add-ing-price').value),
                 stock: Number(document.getElementById('add-ing-stock').value),
-                restockThreshold: Number(document.getElementById('add-ing-threshold').value)
+                restockThreshold: Number(document.getElementById('add-ing-threshold').value),
+                alwaysBuying: document.getElementById('add-ing-always-buying').checked
             });
             showToast('Ingredient added.', 'success');
             e.target.reset();
@@ -1145,7 +1263,8 @@ export function initUI() {
                 description: document.getElementById('edit-ing-description').value,
                 price: Number(document.getElementById('edit-ing-price').value),
                 stock: Number(document.getElementById('edit-ing-stock').value),
-                restockThreshold: Number(document.getElementById('edit-ing-threshold').value)
+                restockThreshold: Number(document.getElementById('edit-ing-threshold').value),
+                alwaysBuying: document.getElementById('edit-ing-always-buying').checked
             });
             showToast('Ingredient updated.');
             closeModal('modal-edit-ingredient');

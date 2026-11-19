@@ -7,6 +7,15 @@
     --color-tab-active-bg: #7e22ce;
     --color-tab-active-text: #ffffff;
 
+    --color-potion-accent: #c084fc;
+    --color-potion-card-hover: #6b21a8;
+    --color-codex-accent: #f87171;
+    --color-codex-accent-soft: #fca5a5;
+    --color-codex-accent-strong: #7f1d1d;
+    --color-codex-accent-border: #b91c1c;
+    --color-codex-accent-button: #b91c1c;
+    --color-codex-accent-button-hover: #991b1b;
+
     --color-backdrop: rgba(0, 0, 0, 0.75);
 
     --color-toast-success-bg: #18181b;
@@ -17,4 +26,12 @@
     --color-toast-error-border: #991b1b;
     --color-toast-error-accent: #ef4444;
     --color-toast-error-text: #fef2f2;
+}
+
+body[data-theme="codex"] {
+    --color-focus-ring: #ef4444;
+    --color-tab-active-bg: #b91c1c;
+    --color-tab-active-text: #fef2f2;
+    --color-potion-accent: #f87171;
+    --color-potion-card-hover: #991b1b;
 }

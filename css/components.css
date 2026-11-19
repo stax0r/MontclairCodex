@@ -14,6 +14,274 @@ dialog[open] {
     color: var(--color-tab-active-text);
 }
 
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+:is(
+    #catalog-grid > .potion-card,
+    #store-ingredient-list > article,
+    #price-list > article,
+    #codex-potion-list > article,
+    #potion-inventory > div,
+    #ingredient-inventory > div
+) {
+    border-radius: 0.75rem;
+}
+
+.search-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #27272a;
+}
+
+.search-field {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+}
+
+.search-field::before,
+.search-field::after {
+    position: absolute;
+    content: "";
+    pointer-events: none;
+}
+
+.search-field::before {
+    top: 50%;
+    left: 0.875rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 1.5px solid #71717a;
+    border-radius: 50%;
+    transform: translateY(-60%);
+}
+
+.search-field::after {
+    top: calc(50% + 0.2rem);
+    left: 1.5rem;
+    width: 0.35rem;
+    height: 1.5px;
+    background: #71717a;
+    transform: rotate(45deg);
+    transform-origin: left center;
+}
+
+.search-field input {
+    width: 100%;
+    border: 1px solid #3f3f46;
+    border-radius: 0.625rem;
+    background: #09090b;
+    padding: 0.625rem 0.75rem 0.625rem 2.375rem;
+    color: #e4e4e7;
+    font-size: 0.875rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.search-field input::placeholder {
+    color: #71717a;
+}
+
+.potion-card {
+    display: flex;
+    min-height: 16rem;
+    flex-direction: column;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    background: #09090b;
+    padding: 1.25rem;
+    transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.potion-card:hover {
+    border-color: var(--color-potion-card-hover);
+    transform: translateY(-1px);
+}
+
+.potion-card__main {
+    min-width: 0;
+    flex: 1;
+}
+
+.potion-card__heading-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.potion-card__category {
+    color: var(--color-potion-accent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.potion-card__title {
+    margin-top: 0.35rem;
+    color: #f4f4f5;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.potion-card__price {
+    flex-shrink: 0;
+    color: var(--color-potion-accent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ingredient-card {
+    display: flex;
+    min-height: 14rem;
+    height: 100%;
+    flex-direction: column;
+    border: 1px solid #27272a;
+    border-radius: 0.75rem;
+    background: #09090b;
+    padding: 1rem;
+}
+
+.ingredient-card__main {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.ingredient-card__heading-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.ingredient-card__title {
+    flex: 1 1 7rem;
+    min-width: 0;
+    color: #f4f4f5;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.ingredient-card__description {
+    flex: 1;
+    margin-top: 0.75rem;
+    color: #a1a1aa;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.ingredient-card__tag {
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: #3b0764;
+    padding: 0.125rem 0.5rem;
+    color: #d8b4fe;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ingredient-card__details {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    border-top: 1px solid #27272a;
+    padding-top: 0.75rem;
+    color: var(--color-potion-accent);
+    font-size: 0.75rem;
+    text-align: left;
+}
+
+.ingredient-card__details:hover {
+    color: #e4e4e7;
+}
+
+.ingredient-card__footer {
+    margin-top: auto;
+    border-top: 1px solid #27272a;
+    padding-top: 0.75rem;
+}
+
+.ingredient-card__sell-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.potion-card__description {
+    margin-top: 0.75rem;
+    color: #a1a1aa;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.potion-card__footer {
+    margin-top: 1.25rem;
+    border-top: 1px solid #27272a;
+    padding-top: 1rem;
+}
+
+.potion-card__recipe h4 {
+    color: #71717a;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.potion-card__recipe ul {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+}
+
+.potion-card__recipe li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: #d4d4d8;
+    font-size: 0.875rem;
+}
+
+.potion-card__recipe li span,
+.potion-card__recipe > p,
+.potion-card__secret {
+    color: #71717a;
+    font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+    .search-toolbar {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .search-field {
+        flex: 0 1 20rem;
+    }
+}
+
 input[type="number"] {
     appearance: textfield;
     -moz-appearance: textfield;
@@ -23,6 +291,63 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+}
+
+body[data-theme="codex"] [class~="text-purple-500"],
+body[data-theme="codex"] [class~="text-purple-400"] {
+    color: var(--color-codex-accent);
+}
+
+body[data-theme="codex"] [class~="text-purple-300"] {
+    color: var(--color-codex-accent-soft);
+}
+
+body[data-theme="codex"] [class~="text-purple-200"] {
+    color: #fecaca;
+}
+
+body[data-theme="codex"] [class~="bg-purple-900"] {
+    background-color: var(--color-codex-accent-strong);
+}
+
+body[data-theme="codex"] [class~="bg-purple-800"],
+body[data-theme="codex"] [class~="bg-purple-700"] {
+    background-color: var(--color-codex-accent-button);
+}
+
+body[data-theme="codex"] [class~="bg-purple-600"] {
+    background-color: #dc2626;
+}
+
+body[data-theme="codex"] [class~="border-purple-700"] {
+    border-color: var(--color-codex-accent-border);
+}
+
+body[data-theme="codex"] [class~="border-t-purple-400"] {
+    border-top-color: var(--color-codex-accent);
+}
+
+body[data-theme="codex"] [class~="hover:bg-purple-900"]:hover,
+body[data-theme="codex"] [class~="hover:bg-purple-800"]:hover,
+body[data-theme="codex"] [class~="hover:bg-purple-700"]:hover {
+    background-color: var(--color-codex-accent-button-hover);
+}
+
+body[data-theme="codex"] [class~="hover:bg-purple-600"]:hover {
+    background-color: #b91c1c;
+}
+
+body[data-theme="codex"] [class~="hover:border-purple-900"]:hover {
+    border-color: var(--color-codex-accent-border);
+}
+
+body[data-theme="codex"] [class~="hover:text-purple-200"]:hover {
+    color: var(--color-codex-accent-soft);
+}
+
+body[data-theme="codex"] ::selection {
+    background-color: var(--color-codex-accent-strong);
+    color: #fef2f2;
 }
 
 /* Toast Notifications */

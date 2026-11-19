@@ -11,7 +11,10 @@ export const state = {
     batchQueue: [],
     selectedCategory: 'All',
     selectedCodexCategory: 'All',
-    searchQuery: ''
+    searchQuery: '',
+    codexSearchQuery: '',
+    codexIngredientSearchQuery: '',
+    adminIngredientSearchQuery: ''
 };
 
 export function setPotions(potions) {
@@ -46,6 +49,18 @@ export function setCodexCategory(category) {
 
 export function setSearchQuery(query) {
     state.searchQuery = query.toLowerCase().trim();
+}
+
+export function setCodexSearchQuery(query) {
+    state.codexSearchQuery = query.toLowerCase().trim();
+}
+
+export function setCodexIngredientSearchQuery(query) {
+    state.codexIngredientSearchQuery = query.toLowerCase().trim();
+}
+
+export function setAdminIngredientSearchQuery(query) {
+    state.adminIngredientSearchQuery = query.toLowerCase().trim();
 }
 
 export function addSatchelItem(potionId, quantity = 1) {

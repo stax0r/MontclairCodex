@@ -108,7 +108,7 @@ export function updatePotion(id, {
     });
 }
 
-export function createIngredient({ name, description = '', price, stock, restockThreshold = 0 }) {
+export function createIngredient({ name, description = '', price, stock, restockThreshold = 0, alwaysBuying = false }) {
     validateQuantity(stock);
     validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
@@ -121,11 +121,12 @@ export function createIngredient({ name, description = '', price, stock, restock
         description: description.trim() || null,
         price,
         stock,
-        restockThreshold
+        restockThreshold,
+        alwaysBuying: Boolean(alwaysBuying)
     });
 }
 
-export function updateIngredient(id, { name, description = '', price, stock, restockThreshold = 0 }) {
+export function updateIngredient(id, { name, description = '', price, stock, restockThreshold = 0, alwaysBuying = false }) {
     validateQuantity(stock);
     validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
@@ -138,7 +139,8 @@ export function updateIngredient(id, { name, description = '', price, stock, res
         locations: null,
         price,
         stock,
-        restockThreshold
+        restockThreshold,
+        alwaysBuying: Boolean(alwaysBuying)
     });
 }
 
