@@ -126,7 +126,9 @@ export function renderStore() {
     if (!grid || !filters) return;
 
     const potionArray = Object.entries(state.potions).map(([id, p]) => ({ id, ...p }));
-    const categories = ['All', ...new Set(potionArray.map((p) => p.category || 'General'))];
+    const storefrontPotions = potionArray.filter((p) => !p.hidden);
+    const categories = ['All', ...new Set(storefrontPotions.map((p) => p.category || 'General'))];
+    if (!categories.includes(state.selectedCategory)) setCategory('All');
 
     filters.innerHTML = categories.map((cat) => `
         <button type="button" class="px-3 py-1 text-xs rounded-full border ${state.selectedCategory === cat ? 'bg-purple-900 border-purple-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'} cat-filter" data-cat="${escapeHTML(cat)}">
@@ -134,7 +136,7 @@ export function renderStore() {
         </button>
     `).join('');
 
-    let filtered = potionArray.filter((p) => !p.hidden);
+    let filtered = storefrontPotions;
     if (state.selectedCategory !== 'All') {
         filtered = filtered.filter((p) => (p.category || 'General') === state.selectedCategory);
     }
@@ -241,7 +243,7 @@ export function renderInventory() {
         <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
             <div class="min-w-0 flex-1">
                 <p class="font-semibold text-sm truncate">${escapeHTML(potion.name)}</p>
-                <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.salePrice || 0}g</p>
+                <p class="text-xs text-zinc-500">${escapeHTML(potion.category || 'General')} · ${potion.salePrice || 0}g${potion.hidden ? ' · Hidden from storefront' : ''}</p>
             </div>
             <button type="button" data-action="edit-potion" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(potion.name)}" title="Edit potion" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
         </div>
@@ -305,7 +307,6 @@ function showIngredientPotions(ingredientId) {
 
     title.innerText = `Potions using ${ingredient.name}`;
     const matches = Object.entries(state.potions).filter(([, potion]) => (
-        !potion.hidden &&
         Number.isSafeInteger(potion.ingredients?.[ingredientId]) &&
         potion.ingredients[ingredientId] > 0
     ));
@@ -349,6 +350,7 @@ function openPotionEditor(id) {
     document.getElementById('edit-pot-name').value = potion.name || '';
     document.getElementById('edit-pot-cat').value = potion.category || '';
     document.getElementById('edit-pot-price').value = potion.salePrice ?? 0;
+    document.getElementById('edit-pot-hidden').checked = Boolean(potion.hidden);
     const recipeList = document.getElementById('edit-pot-recipe-ingredients');
     recipeList.innerHTML = '';
     Object.entries(potion.ingredients || {}).forEach(([ingredientId, quantity]) => {
@@ -715,7 +717,8 @@ export function initUI() {
                 name: document.getElementById('add-pot-name').value,
                 category: document.getElementById('add-pot-cat').value,
                 salePrice: Number(document.getElementById('add-pot-price').value),
-                ingredients: recipe
+                ingredients: recipe,
+                hidden: document.getElementById('add-pot-hidden').checked
             });
             showToast('Potion added.', 'success');
             e.target.reset();
@@ -752,7 +755,8 @@ export function initUI() {
                 name: document.getElementById('edit-pot-name').value,
                 category: document.getElementById('edit-pot-cat').value,
                 salePrice: Number(document.getElementById('edit-pot-price').value),
-                ingredients: recipe
+                ingredients: recipe,
+                hidden: document.getElementById('edit-pot-hidden').checked
             });
             showToast('Potion updated.');
             closeModal('modal-edit-potion');

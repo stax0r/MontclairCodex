@@ -60,7 +60,7 @@ function validatePotion({ salePrice, ingredients = {} }) {
     }
 }
 
-export function createPotion({ name, category, salePrice, ingredients = {} }) {
+export function createPotion({ name, category, salePrice, ingredients = {}, hidden = false }) {
     validatePotion({ salePrice, ingredients });
 
     const id = Date.now().toString();
@@ -69,17 +69,18 @@ export function createPotion({ name, category, salePrice, ingredients = {} }) {
         category: category || 'General',
         salePrice,
         ingredients,
-        hidden: false
+        hidden: Boolean(hidden)
     });
 }
 
-export function updatePotion(id, { name, category, salePrice, ingredients = {} }) {
+export function updatePotion(id, { name, category, salePrice, ingredients = {}, hidden = false }) {
     validatePotion({ salePrice, ingredients });
     return updateData(ref(db, `potions/${id}`), {
         name,
         category: category || 'General',
         salePrice,
-        ingredients: Object.keys(ingredients).length ? ingredients : null
+        ingredients: Object.keys(ingredients).length ? ingredients : null,
+        hidden: Boolean(hidden)
     });
 }
 
