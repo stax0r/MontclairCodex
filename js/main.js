@@ -1,4 +1,9 @@
-import { setPotions, setIngredients } from "./state.js";
+import {
+    setPotions,
+    setIngredients,
+    setPotionsLoadError,
+    setIngredientsLoadError
+} from "./state.js";
 import { subscribeAuth, subscribePotions, subscribeIngredients } from "./services.js";
 import {
     initUI,
@@ -29,10 +34,25 @@ function bootstrap() {
         renderSatchel();
         renderBatchSelect();
         renderBatchQueue();
+    }, (error) => {
+        setPotionsLoadError(String(error?.message || error));
+        renderStore();
+        renderCodexPotions();
+        renderInventory();
+        renderBatchSelect();
+        renderBatchQueue();
     });
 
     subscribeIngredients((ingredients) => {
         setIngredients(ingredients);
+        renderPriceList();
+        renderStoreIngredients();
+        renderCodexPotions();
+        renderInventory();
+        renderRecipeIngredients();
+        renderBatchQueue();
+    }, (error) => {
+        setIngredientsLoadError(String(error?.message || error));
         renderPriceList();
         renderStoreIngredients();
         renderCodexPotions();

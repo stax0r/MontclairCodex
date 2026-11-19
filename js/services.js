@@ -31,16 +31,16 @@ export function logoutUser() {
 // ==========================================
 // FIREBASE REALTIME DATABASE
 // ==========================================
-export function subscribePotions(callback) {
+export function subscribePotions(callback, onError) {
     return onValue(ref(db, 'potions'), (snapshot) => {
         callback(snapshot.val() || {});
-    });
+    }, onError);
 }
 
-export function subscribeIngredients(callback) {
+export function subscribeIngredients(callback, onError) {
     return onValue(ref(db, 'ingredients'), (snapshot) => {
         callback(snapshot.val() || {});
-    });
+    }, onError);
 }
 
 function validateQuantity(quantity) {
@@ -132,6 +132,21 @@ export function updateIngredient(id, { name, price, stock, restockThreshold = 0 
     }
 
     return updateData(ref(db, `ingredients/${id}`), { name, price, stock, restockThreshold });
+}
+
+export async function increaseIngredientStock(id, quantity) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+        throw new Error('INVALID_STOCK_INCREMENT');
+    }
+
+    const result = await runTransaction(ref(db, `ingredients/${id}/stock`), (stock) => {
+        if (!Number.isSafeInteger(stock) || stock < 0) return;
+        const updatedStock = stock + quantity;
+        return Number.isSafeInteger(updatedStock) ? updatedStock : undefined;
+    });
+    if (!result.committed) {
+        throw new Error('STOCK_UPDATE_ABORTED');
+    }
 }
 
 export function deletePotion(id) {

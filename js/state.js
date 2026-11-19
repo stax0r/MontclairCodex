@@ -1,6 +1,10 @@
 export const state = {
     potions: {},
     ingredients: {},
+    potionsLoaded: false,
+    ingredientsLoaded: false,
+    potionsLoadError: '',
+    ingredientsLoadError: '',
     locations: {},
     prices: {},
     satchel: [],
@@ -12,10 +16,24 @@ export const state = {
 
 export function setPotions(potions) {
     state.potions = potions || {};
+    state.potionsLoaded = true;
+    state.potionsLoadError = '';
+}
+
+export function setPotionsLoadError(error) {
+    state.potionsLoaded = true;
+    state.potionsLoadError = error;
 }
 
 export function setIngredients(ingredients) {
     state.ingredients = ingredients || {};
+    state.ingredientsLoaded = true;
+    state.ingredientsLoadError = '';
+}
+
+export function setIngredientsLoadError(error) {
+    state.ingredientsLoaded = true;
+    state.ingredientsLoadError = error;
 }
 
 export function setCategory(category) {
@@ -49,6 +67,18 @@ export function addSatchelItem(potionId, quantity = 1) {
 
 export function removeSatchelItem(index) {
     state.satchel.splice(index, 1);
+}
+
+export function setSatchelItemQuantity(index, quantity) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+        throw new Error('INVALID_SATCHEL_QUANTITY');
+    }
+
+    const item = state.satchel[index];
+    if (!item) {
+        throw new Error('SATCHEL_ITEM_NOT_FOUND');
+    }
+    item.qty = quantity;
 }
 
 export function clearSatchel() {
