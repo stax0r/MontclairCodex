@@ -1341,7 +1341,7 @@ export function initUI() {
             e.target.reset();
         } catch (err) {
             if (err.message === 'WEBHOOK_UNCONFIGURED') {
-                showToast('Discord Webhook not configured in environment.', 'error');
+                showToast('Discord webhook is not configured. Please try again later.', 'error');
             } else if (err.message.startsWith('HTTP_')) {
                 showToast(`Error dispatching: ${err.message.replace('HTTP_', '')}`, 'error');
             } else {

@@ -221,11 +221,14 @@ export async function brewBatch(batchQueue, potions) {
 // DISCORD WEBHOOKS
 // ==========================================
 function isWebhookConfigured() {
-    return (
-        DISCORD_WEBHOOK_URL &&
-        !DISCORD_WEBHOOK_URL.includes("PLACEHOLDER") &&
-        !DISCORD_WEBHOOK_URL.includes("__DISCORD_WEBHOOK")
-    );
+    try {
+        const url = new URL(DISCORD_WEBHOOK_URL);
+        return url.protocol === "https:" &&
+            (url.hostname === "discord.com" || url.hostname === "discordapp.com") &&
+            url.pathname.startsWith("/api/webhooks/");
+    } catch {
+        return false;
+    }
 }
 
 async function postWebhook(payload) {
@@ -257,6 +260,7 @@ export async function dispatchOrder({ name, discord, notes, satchel, potions }) 
     });
 
     const payload = {
+        allowed_mentions: { parse: [] },
         embeds: [{
             title: "🧪 New Store Order",
             color: 7419530, // Purple

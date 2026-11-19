@@ -12,7 +12,7 @@ const firebaseConfig = {
     appId: "1:961628471163:web:7dd92578114b7b002287de"
 };
 
-// TODO: Replace with actual discord webhook
+// The GitHub Pages workflow replaces this placeholder during deployment.
 export const DISCORD_WEBHOOK_URL = "DISCORD_WEBHOOK_URL";
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
