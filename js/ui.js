@@ -178,7 +178,10 @@ export function renderStore() {
                 <h3 class="text-lg font-bold text-zinc-100 mb-1">${escapeHTML(p.name)}</h3>
                 ${p.description ? `<p class="text-xs text-zinc-400 mb-4 line-clamp-3">${escapeHTML(p.description)}</p>` : ''}
             </div>
-            <button type="button" data-action="add-satchel" data-id="${escapeHTML(p.id)}" class="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 py-1.5 rounded text-sm text-zinc-200 transition-colors">+ Add to Satchel</button>
+            <div class="flex gap-2">
+                <input type="number" min="1" step="1" value="1" aria-label="Quantity of ${escapeHTML(p.name)}" class="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-center">
+                <button type="button" data-action="add-satchel" data-id="${escapeHTML(p.id)}" class="flex-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 py-1.5 rounded text-sm text-zinc-200 transition-colors">+ Add to Satchel</button>
+            </div>
         </div>
     `).join('');
 }
@@ -257,7 +260,7 @@ export function renderStoreIngredients() {
     }));
 
     if (lowStockIngredients.length === 0) {
-        ingredientList.innerHTML = '<p class="text-zinc-500 text-sm col-span-full">No ingredients are currently below their low-stock thresholds.</p>';
+        ingredientList.innerHTML = "<p class=\"text-zinc-500 text-sm col-span-full\">The store isn't buying anything right now.</p>";
         return;
     }
 
@@ -329,7 +332,27 @@ export function renderInventory() {
     if (!potionList || !ingredientList) return;
 
     const potions = sortEntriesByName(Object.entries(state.potions));
-    const ingredients = sortEntriesByName(Object.entries(state.ingredients));
+    const usedIngredientIds = new Set();
+    Object.values(state.potions).forEach((potion) => {
+        Object.entries(potion.ingredients || {}).forEach(([ingredientId, quantity]) => {
+            if (Number.isSafeInteger(quantity) && quantity > 0) usedIngredientIds.add(ingredientId);
+        });
+    });
+    const ingredients = Object.entries(state.ingredients).sort((left, right) => {
+        const [leftId, leftIngredient] = left;
+        const [rightId, rightIngredient] = right;
+        const leftUnused = !usedIngredientIds.has(leftId);
+        const rightUnused = !usedIngredientIds.has(rightId);
+        if (leftUnused !== rightUnused) return leftUnused ? 1 : -1;
+
+        const leftLowStock = (Number.isSafeInteger(leftIngredient.stock) ? leftIngredient.stock : 0) <
+            (Number.isSafeInteger(leftIngredient.restockThreshold) ? leftIngredient.restockThreshold : 0);
+        const rightLowStock = (Number.isSafeInteger(rightIngredient.stock) ? rightIngredient.stock : 0) <
+            (Number.isSafeInteger(rightIngredient.restockThreshold) ? rightIngredient.restockThreshold : 0);
+        if (leftLowStock !== rightLowStock) return leftLowStock ? -1 : 1;
+
+        return String(leftIngredient.name || '').localeCompare(String(rightIngredient.name || ''), undefined, { sensitivity: 'base' });
+    });
     if (potionCount) potionCount.innerText = `${potions.length} items`;
     if (ingredientCount) ingredientCount.innerText = `${ingredients.length} items`;
 
@@ -343,15 +366,23 @@ export function renderInventory() {
         </div>
     `).join('') : '<p class="text-zinc-500 text-sm">No potions in the cellar.</p>';
 
-    ingredientList.innerHTML = ingredients.length ? ingredients.map(([id, ingredient]) => `
-        <div class="flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
+    ingredientList.innerHTML = ingredients.length ? ingredients.map(([id, ingredient]) => {
+        const stock = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
+        const threshold = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
+        const lowStock = stock < threshold;
+        return `
+        <div class="flex items-center gap-3 bg-zinc-950 border ${lowStock ? 'border-amber-800' : 'border-zinc-800'} rounded-lg p-3">
             <div class="min-w-0 flex-1">
-                <p class="font-semibold text-sm truncate">${escapeHTML(ingredient.name)}</p>
-                <p class="text-xs text-zinc-500">${Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0} units · ${ingredient.price ?? 0}g · Low-stock threshold: ${Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0}</p>
+                <div class="flex items-center gap-2">
+                    <p class="font-semibold text-sm truncate">${escapeHTML(ingredient.name)}</p>
+                    ${lowStock ? '<span class="shrink-0 rounded bg-amber-950 px-2 py-0.5 text-xs font-semibold text-amber-300">Low stock</span>' : ''}
+                </div>
+                <p class="text-xs text-zinc-500">${stock} units · ${ingredient.price ?? 0}g · Threshold: ${threshold}</p>
             </div>
             <button type="button" data-action="edit-ingredient" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(ingredient.name)}" title="Edit ingredient" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
         </div>
-    `).join('') : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>';
+    `;
+    }).join('') : '<p class="text-zinc-500 text-sm">No ingredients in the cellar.</p>';
 }
 
 export function renderRecipeIngredients() {
@@ -764,9 +795,19 @@ export function initUI() {
     document.getElementById('catalog-grid')?.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="add-satchel"]');
         if (!btn) return;
-        addSatchelItem(btn.dataset.id);
+        const quantity = Number(btn.parentElement.querySelector('input[type="number"]').value);
+        if (!Number.isSafeInteger(quantity) || quantity < 1) {
+            showToast('Enter a whole quantity of at least 1.', 'error');
+            return;
+        }
+        try {
+            addSatchelItem(btn.dataset.id, quantity);
+        } catch (err) {
+            showToast(`Could not add to satchel: ${err.message}`, 'error');
+            return;
+        }
         renderSatchel();
-        showToast('Added to satchel.');
+        showToast(`Added ${quantity} to satchel.`);
     });
 
     document.getElementById('satchel-items')?.addEventListener('click', (e) => {
