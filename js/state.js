@@ -8,6 +8,7 @@ export const state = {
     locations: {},
     prices: {},
     satchel: [],
+    weighingScale: [],
     batchQueue: [],
     selectedCategory: 'All',
     selectedCodexCategory: 'All',
@@ -98,6 +99,43 @@ export function setSatchelItemQuantity(index, quantity) {
 
 export function clearSatchel() {
     state.satchel = [];
+}
+
+export function addWeighingScaleItem(ingredientId) {
+    if (!ingredientId) {
+        throw new Error('INVALID_WEIGHING_SCALE_ITEM');
+    }
+
+    const existing = state.weighingScale.find((item) => item.id === ingredientId);
+    if (existing) {
+        const updatedQuantity = existing.qty + 1;
+        if (!Number.isSafeInteger(updatedQuantity)) {
+            throw new Error('INVALID_WEIGHING_SCALE_QUANTITY');
+        }
+        existing.qty = updatedQuantity;
+    } else {
+        state.weighingScale.push({ id: ingredientId, qty: 1 });
+    }
+}
+
+export function removeWeighingScaleItem(index) {
+    state.weighingScale.splice(index, 1);
+}
+
+export function setWeighingScaleItemQuantity(index, quantity) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+        throw new Error('INVALID_WEIGHING_SCALE_QUANTITY');
+    }
+
+    const item = state.weighingScale[index];
+    if (!item) {
+        throw new Error('WEIGHING_SCALE_ITEM_NOT_FOUND');
+    }
+    item.qty = quantity;
+}
+
+export function clearWeighingScale() {
+    state.weighingScale = [];
 }
 
 export function addBatchItem(potionId, qty) {

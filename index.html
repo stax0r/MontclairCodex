@@ -42,7 +42,7 @@
         <!-- STOREFRONT VIEW -->
         <section id="view-store" class="space-y-6">
             <div class="space-y-2">
-                <p class="text-sm uppercase tracking-[0.25em] text-purple-400">The potion shop</p>
+                <p class="text-lg uppercase tracking-[0.25em] text-purple-400">The potion shop</p>
                 <p class="text-sm text-zinc-400">Browse our potions and see which ingredients we're currently buying.</p>
             </div>
             <div class="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-fit" role="tablist" aria-label="The Shop sections">
@@ -130,7 +130,7 @@
         <!-- CODEX VIEW -->
         <section id="view-codex" class="hidden space-y-6">
             <div class="space-y-2">
-                <p class="text-sm uppercase tracking-[0.25em] text-purple-400">The Alchemical Codex</p>
+                <p class="text-lg uppercase tracking-[0.25em] text-purple-400">The Alchemical Codex</p>
                 <p class="text-sm text-zinc-400">Explore known potions, ingredients, and fair price limits per reagent.</p>
             </div>
             <div class="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-fit" role="tablist" aria-label="Codex sections">
@@ -161,6 +161,11 @@
         </section>
 
     </main>
+
+    <!-- FLOATING WEIGHING SCALE BUTTON -->
+    <button id="floating-weighing-scale" class="hidden fixed bottom-24 right-6 z-40 bg-purple-900 hover:bg-purple-800 text-white px-5 py-3 rounded-full font-bold shadow-lg shadow-purple-900/50 flex items-center gap-2 transition-transform hover:-translate-y-1">
+        ⚖️ Weighing Scale (<span id="weighing-scale-count">0</span>)
+    </button>
 
     <!-- FLOATING SATCHEL BUTTON -->
     <button id="floating-satchel" class="hidden fixed bottom-6 right-6 z-40 bg-purple-600 hover:bg-purple-500 text-white px-5 py-3 rounded-full font-bold shadow-lg shadow-purple-900/50 flex items-center gap-2 transition-transform hover:-translate-y-1">
@@ -204,6 +209,27 @@
         </div>
     </dialog>
 
+    <dialog id="modal-weighing-scale" aria-labelledby="weighing-scale-title" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 id="weighing-scale-title" class="text-xl font-bold mb-2 text-purple-400">Weighing Scale</h2>
+            <p class="mb-4 text-sm text-zinc-400">Adjust the amounts you have to see the shop's offer.</p>
+            <div id="weighing-scale-items" class="max-h-60 overflow-y-auto space-y-2 mb-4 pr-2">
+                <p class="text-zinc-500 text-sm">Weighing Scale is empty.</p>
+            </div>
+            <div class="border-t border-zinc-800 pt-3">
+                <div class="flex justify-between gap-3 text-lg font-mono font-bold text-purple-400">
+                    <span id="weighing-scale-total-label">Total offer</span>
+                    <span><span id="weighing-scale-total">0.00</span>g</span>
+                </div>
+                <p id="weighing-scale-note" hidden role="status" class="mt-2 text-xs text-zinc-500"></p>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="button" id="btn-clear-weighing-scale" class="border border-zinc-700 px-3 py-2 rounded text-sm text-zinc-400 hover:bg-zinc-800">Clear scale</button>
+            </div>
+        </div>
+    </dialog>
+
     <dialog id="modal-ingredient-details" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100 max-h-[85vh] overflow-y-auto">
             <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
@@ -215,6 +241,18 @@
             <section>
                 <h3 class="text-sm font-semibold text-zinc-200">Description</h3>
                 <div id="ingredient-detail-description" class="mt-1 text-sm text-zinc-400 whitespace-pre-line"></div>
+            </section>
+        </div>
+    </dialog>
+
+    <dialog id="modal-potion-details" aria-labelledby="potion-detail-title" aria-describedby="potion-detail-description" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100 max-h-[85vh] overflow-y-auto">
+            <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
+            <h2 id="potion-detail-title" class="text-xl font-bold mb-4 pr-8 text-purple-400">Potion details</h2>
+            <p id="potion-detail-description" class="mb-5 text-sm text-zinc-400 whitespace-pre-line"></p>
+            <section>
+                <h3 class="mb-2 text-sm font-semibold text-zinc-200">Ingredients</h3>
+                <div id="potion-detail-ingredients" class="space-y-2"></div>
             </section>
         </div>
     </dialog>

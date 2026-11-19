@@ -8,7 +8,10 @@
     --color-tab-active-text: #ffffff;
 
     --color-potion-accent: #c084fc;
-    --color-potion-card-hover: #6b21a8;
+    --color-card-hover-border: #7e22ce;
+    --color-card-hover-surface: #100b16;
+    --color-card-hover-glow: rgb(126 34 206 / 20%);
+    --color-card-hover-accent: #d8b4fe;
     --color-codex-accent: #f87171;
     --color-codex-accent-soft: #fca5a5;
     --color-codex-accent-strong: #7f1d1d;
@@ -33,5 +36,8 @@ body[data-theme="codex"] {
     --color-tab-active-bg: #b91c1c;
     --color-tab-active-text: #fef2f2;
     --color-potion-accent: #f87171;
-    --color-potion-card-hover: #991b1b;
+    --color-card-hover-border: #b91c1c;
+    --color-card-hover-surface: #160b0b;
+    --color-card-hover-glow: rgb(185 28 28 / 20%);
+    --color-card-hover-accent: #fca5a5;
 }

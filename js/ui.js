@@ -10,6 +10,10 @@ import {
     removeSatchelItem,
     setSatchelItemQuantity,
     clearSatchel,
+    addWeighingScaleItem,
+    removeWeighingScaleItem,
+    setWeighingScaleItemQuantity,
+    clearWeighingScale,
     addBatchItem,
     removeBatchItem,
     clearBatchQueue
@@ -238,7 +242,7 @@ export function renderStore() {
                     </div>
                     <span class="potion-card__price">${p.salePrice || 0}g</span>
                 </div>
-                ${p.description ? `<p class="potion-card__description line-clamp-3">${escapeHTML(p.description)}</p>` : ''}
+                ${p.description ? `<p class="potion-card__description">${escapeHTML(p.description)}</p>` : ''}
             </div>
             <div class="potion-card__footer flex gap-2">
                 <div class="flex items-center rounded border border-zinc-800 bg-zinc-950">
@@ -267,6 +271,123 @@ function renderSatchelSummary() {
         return potion ? sum + (potion.salePrice || 0) * item.qty : sum;
     }, 0);
     if (totalSpan) totalSpan.innerText = totalCost.toFixed(1);
+}
+
+function renderWeighingScaleSummary() {
+    const floatButton = document.getElementById('floating-weighing-scale');
+    const count = document.getElementById('weighing-scale-count');
+    const totalQuantity = state.weighingScale.reduce((sum, item) => sum + item.qty, 0);
+
+    floatButton?.classList.toggle('hidden', totalQuantity === 0);
+    if (count) count.innerText = totalQuantity;
+}
+
+function getWeighingScaleLineDetails(item) {
+    const ingredient = state.ingredients[item.id];
+    const unitPrice = ingredient ? getWantedIngredientUnitPrice(ingredient.price) : null;
+    const rawLineTotal = unitPrice === null ? null : unitPrice * item.qty;
+    const lineTotal = rawLineTotal !== null && Number.isFinite(rawLineTotal)
+        ? Number(rawLineTotal.toFixed(2))
+        : null;
+
+    return { ingredient, unitPrice, lineTotal };
+}
+
+function updateWeighingScaleTotals() {
+    const itemsList = document.getElementById('weighing-scale-items');
+    const totalLabel = document.getElementById('weighing-scale-total-label');
+    const totalSpan = document.getElementById('weighing-scale-total');
+    const note = document.getElementById('weighing-scale-note');
+    if (!itemsList || !totalLabel || !totalSpan || !note) return;
+
+    let totalOffer = 0;
+    let hasUnpricedItems = false;
+    state.weighingScale.forEach((item, index) => {
+        const { lineTotal } = getWeighingScaleLineDetails(item);
+        const lineTotalSpan = itemsList.querySelector(`[data-weighing-scale-entry="${index}"] [data-line-total]`);
+        if (lineTotalSpan) {
+            lineTotalSpan.innerText = lineTotal === null ? '—' : `${lineTotal.toFixed(2)}g`;
+        }
+
+        if (lineTotal === null) {
+            hasUnpricedItems = true;
+        } else {
+            totalOffer += lineTotal;
+        }
+    });
+
+    totalLabel.innerText = hasUnpricedItems ? 'Known offer subtotal' : 'Total offer';
+    totalSpan.innerText = Number.isFinite(totalOffer) ? totalOffer.toFixed(2) : '—';
+    note.hidden = !hasUnpricedItems;
+    note.innerText = hasUnpricedItems
+        ? 'Items without a fair price are excluded from the subtotal.'
+        : '';
+}
+
+function updateWeighingScaleQuantityFromInput(input) {
+    const index = Number(input.dataset.index);
+    const quantity = Number(input.value);
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || !state.weighingScale[index]) return false;
+
+    setWeighingScaleItemQuantity(index, quantity);
+    const decreaseButton = input.parentElement.querySelector('[data-action="adjust-weighing-scale-quantity"][data-delta="-1"]');
+    if (decreaseButton) decreaseButton.disabled = quantity <= 1;
+    renderWeighingScaleSummary();
+    updateWeighingScaleTotals();
+    return true;
+}
+
+export function renderWeighingScale() {
+    const itemsList = document.getElementById('weighing-scale-items');
+    const totalLabel = document.getElementById('weighing-scale-total-label');
+    const totalSpan = document.getElementById('weighing-scale-total');
+    const note = document.getElementById('weighing-scale-note');
+    renderWeighingScaleSummary();
+    if (!itemsList || !totalLabel || !totalSpan || !note) return;
+
+    if (state.weighingScale.length === 0) {
+        itemsList.innerHTML = '<p class="text-zinc-500 text-sm">Weighing Scale is empty.</p>';
+        totalLabel.innerText = 'Total offer';
+        totalSpan.innerText = '0.00';
+        note.hidden = true;
+        return;
+    }
+
+    let totalOffer = 0;
+    let hasUnpricedItems = false;
+    itemsList.innerHTML = state.weighingScale.map((item, index) => {
+        const { ingredient, unitPrice, lineTotal } = getWeighingScaleLineDetails(item);
+        if (lineTotal === null || !Number.isFinite(lineTotal)) {
+            hasUnpricedItems = true;
+        } else {
+            totalOffer += lineTotal;
+        }
+
+        return `
+            <div data-weighing-scale-entry="${index}" class="flex flex-col gap-3 bg-zinc-950 border border-zinc-800 p-3 rounded sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-sm">${escapeHTML(ingredient?.name || 'Unavailable ingredient')}</p>
+                    <p class="text-xs text-zinc-500">${unitPrice === null ? 'No fair price found yet' : `${unitPrice.toFixed(2)}g / unit`}</p>
+                </div>
+                <div class="flex items-center justify-between gap-3 sm:justify-end">
+                    <div class="flex items-center rounded border border-zinc-800 bg-zinc-900">
+                        <button type="button" data-action="adjust-weighing-scale-quantity" data-index="${index}" data-delta="-1" aria-label="Decrease ${escapeHTML(ingredient?.name || 'ingredient')} quantity" ${item.qty <= 1 ? 'disabled' : ''} class="px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40">−</button>
+                        <input type="number" min="1" step="1" value="${item.qty}" data-action="set-weighing-scale-quantity" data-index="${index}" aria-label="Quantity of ${escapeHTML(ingredient?.name || 'ingredient')} to sell" class="w-12 bg-transparent px-1 py-1 text-sm text-center">
+                        <button type="button" data-action="adjust-weighing-scale-quantity" data-index="${index}" data-delta="1" aria-label="Increase ${escapeHTML(ingredient?.name || 'ingredient')} quantity" class="px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white">+</button>
+                    </div>
+                    <span data-line-total class="text-sm font-mono text-purple-400">${lineTotal === null || !Number.isFinite(lineTotal) ? '—' : `${lineTotal.toFixed(2)}g`}</span>
+                    <button type="button" data-action="remove-weighing-scale" data-index="${index}" aria-label="Remove ${escapeHTML(ingredient?.name || 'ingredient')} from weighing scale" class="text-red-500 hover:text-red-400 font-bold px-2">✕</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    totalLabel.innerText = hasUnpricedItems ? 'Known offer subtotal' : 'Total offer';
+    totalSpan.innerText = Number.isFinite(totalOffer) ? totalOffer.toFixed(2) : '—';
+    note.hidden = !hasUnpricedItems;
+    note.innerText = hasUnpricedItems
+        ? 'Items without a fair price are excluded from the subtotal.'
+        : '';
 }
 
 function adjustQuantityInput(button) {
@@ -401,12 +522,7 @@ export function renderStoreIngredients() {
                     <p class="ingredient-card__description">${escapeHTML(getIngredientDescriptionOrPlaceholder(ingredient))}</p>
                 </div>
                 <div class="ingredient-card__footer">
-                    <div class="ingredient-card__sell-controls">
-                        <label class="sr-only" for="sell-quantity-${escapeHTML(id)}">Quantity of ${escapeHTML(ingredient.name)} to sell</label>
-                        <input id="sell-quantity-${escapeHTML(id)}" data-sell-quantity type="number" min="1" step="1" value="1" class="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-center">
-                        <button type="button" data-action="calculate-ingredient-sale" data-id="${escapeHTML(id)}" class="flex-1 rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-700">Sell</button>
-                    </div>
-                    <p data-sell-quote hidden role="status" aria-live="polite" class="mt-2 text-xs text-zinc-400"></p>
+                    <button type="button" data-action="add-weighing-scale" data-id="${escapeHTML(id)}" class="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-700">Add to Weighing Scale</button>
                 </div>
             </article>
     `).join('');
@@ -455,8 +571,7 @@ export function renderCodexPotions() {
         return;
     }
 
-    potionList.innerHTML = filteredPotions.map(([, potion]) => {
-        const recipe = Object.entries(potion.ingredients || {});
+    potionList.innerHTML = filteredPotions.map(([id, potion]) => {
         return `
             <article class="potion-card">
                 <div class="potion-card__main">
@@ -468,16 +583,10 @@ export function renderCodexPotions() {
                     </div>
                     <p class="potion-card__description">${escapeHTML(potion.description || 'No description provided.')}</p>
                 </div>
-                ${potion.hideRecipe
-                    ? '<p class="potion-card__footer potion-card__secret">Recipe kept secret.</p>'
-                    : `<div class="potion-card__footer potion-card__recipe">
-                        <h4>Ingredients</h4>
-                        ${recipe.length
-                            ? `<ul>${recipe.map(([id, quantity]) => `
-                                <li>${escapeHTML(state.ingredients[id]?.name || 'Unknown ingredient')} <span>· ${escapeHTML(quantity)} units</span></li>
-                            `).join('')}</ul>`
-                            : '<p>No ingredients listed.</p>'}
-                    </div>`}
+                <button type="button" data-action="show-potion-details" data-id="${escapeHTML(id)}" aria-label="More details about ${escapeHTML(potion.name)}" class="potion-card__details">
+                    <span>More details</span>
+                    <span aria-hidden="true">›</span>
+                </button>
             </article>
         `;
     }).join('');
@@ -630,6 +739,35 @@ function showIngredientDetails(ingredientId) {
         `).join('') : '<p class="text-sm text-zinc-400">No listed potions currently use this ingredient.</p>';
 
     openModal('modal-ingredient-details');
+}
+
+function showPotionDetails(potionId) {
+    const potion = state.potions[potionId];
+    if (!potion || potion.hideFromCodex) return;
+
+    const title = document.getElementById('potion-detail-title');
+    const description = document.getElementById('potion-detail-description');
+    const ingredientsList = document.getElementById('potion-detail-ingredients');
+    if (!title || !description || !ingredientsList) return;
+
+    title.innerText = potion.name;
+    description.innerText = potion.description || 'No description provided.';
+
+    if (potion.hideRecipe) {
+        ingredientsList.innerHTML = '<p class="text-sm text-zinc-400">Recipe kept secret.</p>';
+    } else {
+        const recipe = Object.entries(potion.ingredients || {});
+        ingredientsList.innerHTML = recipe.length
+            ? `<ul class="grid gap-2">${recipe.map(([ingredientId, quantity]) => `
+                <li class="flex justify-between gap-3 rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm">
+                    <span>${escapeHTML(state.ingredients[ingredientId]?.name || 'Unknown ingredient')}</span>
+                    <span class="text-zinc-400">${escapeHTML(quantity)} units</span>
+                </li>
+            `).join('')}</ul>`
+            : '<p class="text-sm text-zinc-400">No ingredients listed.</p>';
+    }
+
+    openModal('modal-potion-details');
 }
 
 function collectRecipe(listId) {
@@ -909,41 +1047,43 @@ export function initUI() {
         if (btn) showIngredientDetails(btn.dataset.id);
     });
 
+    document.getElementById('codex-potion-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="show-potion-details"]');
+        if (btn) showPotionDetails(btn.dataset.id);
+    });
+
     document.getElementById('store-ingredient-list')?.addEventListener('click', (e) => {
-        const button = e.target.closest('[data-action="calculate-ingredient-sale"]');
+        const button = e.target.closest('[data-action="add-weighing-scale"]');
         if (!button) return;
 
-        const card = button.closest('.ingredient-card');
-        const quantityInput = card.querySelector('[data-sell-quantity]');
-        const quote = card.querySelector('[data-sell-quote]');
         const ingredient = state.ingredients[button.dataset.id];
-        const quantity = Number(quantityInput.value);
-        quote.hidden = false;
-
-        if (!Number.isSafeInteger(quantity) || quantity < 1) {
-            quantityInput.setAttribute('aria-invalid', 'true');
-            quote.textContent = 'Enter a whole number of units to sell.';
-            return;
-        }
-
-        quantityInput.removeAttribute('aria-invalid');
         if (!ingredient) {
-            quote.textContent = 'This ingredient is no longer available.';
+            showToast('This ingredient is no longer available.', 'error');
             return;
         }
 
-        const unitPrice = getWantedIngredientUnitPrice(ingredient.price);
-        if (unitPrice === null) {
-            quote.textContent = 'A fair price has not been set, so an offer cannot be calculated yet.';
+        try {
+            addWeighingScaleItem(button.dataset.id);
+        } catch (err) {
+            showToast(`Could not add to Weighing Scale: ${err.message}`, 'error');
             return;
         }
 
-        const total = Number((unitPrice * quantity).toFixed(2));
-        quote.textContent = `Offer for ${quantity} ${quantity === 1 ? 'unit' : 'units'}: ${total.toFixed(2)}g`;
+        renderWeighingScale();
+        showToast(`${ingredient.name} added to Weighing Scale.`);
     });
 
     document.getElementById('btn-open-login')?.addEventListener('click', () => openModal('modal-login'));
     document.getElementById('floating-satchel')?.addEventListener('click', () => openModal('modal-satchel'));
+    document.getElementById('floating-weighing-scale')?.addEventListener('click', () => {
+        renderWeighingScale();
+        openModal('modal-weighing-scale');
+    });
+    document.getElementById('btn-clear-weighing-scale')?.addEventListener('click', () => {
+        clearWeighingScale();
+        renderWeighingScale();
+        showToast('Weighing Scale cleared.');
+    });
     document.getElementById('btn-open-admin-page')?.addEventListener('click', openAdminPage);
     document.getElementById('btn-admin-back')?.addEventListener('click', () => tabStore.click());
     document.getElementById('btn-open-add-potion')?.addEventListener('click', () => openModal('modal-add-potion'));
@@ -1116,6 +1256,49 @@ export function initUI() {
 
         const item = state.satchel[Number(input.dataset.index)];
         if (item) input.value = item.qty;
+        showToast('Enter a whole quantity of at least 1.', 'error');
+    });
+
+    document.getElementById('weighing-scale-items')?.addEventListener('click', (e) => {
+        const quantityButton = e.target.closest('[data-action="adjust-weighing-scale-quantity"]');
+        if (quantityButton) {
+            const index = Number(quantityButton.dataset.index);
+            const item = state.weighingScale[index];
+            const input = quantityButton.parentElement.querySelector('input[type="number"]');
+            if (!item || !input) return;
+
+            const inputQuantity = Number(input.value);
+            const currentQuantity = Number.isSafeInteger(inputQuantity) && inputQuantity >= 1
+                ? inputQuantity
+                : item.qty;
+            const updatedQuantity = currentQuantity + Number(quantityButton.dataset.delta);
+            if (!Number.isSafeInteger(updatedQuantity) || updatedQuantity < 1) {
+                showToast('Quantity must be a whole number of at least 1.', 'error');
+                return;
+            }
+
+            setWeighingScaleItemQuantity(index, updatedQuantity);
+            renderWeighingScale();
+            return;
+        }
+
+        const removeButton = e.target.closest('[data-action="remove-weighing-scale"]');
+        if (removeButton) {
+            removeWeighingScaleItem(Number(removeButton.dataset.index));
+            renderWeighingScale();
+        }
+    });
+
+    document.getElementById('weighing-scale-items')?.addEventListener('input', (e) => {
+        const input = e.target.closest('[data-action="set-weighing-scale-quantity"]');
+        if (input) updateWeighingScaleQuantityFromInput(input);
+    });
+
+    document.getElementById('weighing-scale-items')?.addEventListener('change', (e) => {
+        const input = e.target.closest('[data-action="set-weighing-scale-quantity"]');
+        if (!input || updateWeighingScaleQuantityFromInput(input)) return;
+
+        renderWeighingScale();
         showToast('Enter a whole quantity of at least 1.', 'error');
     });
 
