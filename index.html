@@ -135,6 +135,7 @@
             </div>
             <div id="codex-panel-ingredients" role="tabpanel" aria-labelledby="codex-tab-ingredients" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-2">
                 <h2 class="text-lg font-bold text-zinc-100">Ingredients</h2>
+                <p class="text-xs text-zinc-500">The marked price is about the most an alchemist should pay.</p>
                 <div id="price-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div role="status" class="col-span-full flex items-center gap-3 text-sm text-zinc-400"><span aria-hidden="true" class="h-4 w-4 animate-spin rounded-full border-2 border-zinc-700 border-t-purple-400"></span>Loading ingredients...</div>
                 </div>
@@ -194,11 +195,18 @@
         </div>
     </dialog>
 
-    <dialog id="modal-ingredient-potions" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100">
+    <dialog id="modal-ingredient-details" class="bg-transparent p-0 backdrop:bg-black/80 w-full max-w-lg m-auto">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative shadow-2xl text-zinc-100 max-h-[85vh] overflow-y-auto">
             <button type="button" class="close-modal absolute top-4 right-4 text-zinc-500 hover:text-white" aria-label="Close">✕</button>
-            <h2 id="ingredient-potion-title" class="text-xl font-bold mb-4 text-purple-400">Potions using this ingredient</h2>
-            <div id="ingredient-potion-list" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+            <h2 id="ingredient-detail-title" class="text-xl font-bold mb-4 pr-8 text-purple-400">Ingredient details</h2>
+            <section class="mb-5">
+                <h3 class="mb-2 text-sm font-semibold text-zinc-200">Used in these potions</h3>
+                <div id="ingredient-potion-list" class="space-y-3 max-h-[35vh] overflow-y-auto"></div>
+            </section>
+            <section>
+                <h3 class="text-sm font-semibold text-zinc-200">Description</h3>
+                <div id="ingredient-detail-description" class="mt-1 text-sm text-zinc-400 whitespace-pre-line"></div>
+            </section>
         </div>
     </dialog>
 
@@ -247,6 +255,8 @@
             <form id="admin-add-ingredient" class="space-y-3">
                 <label for="add-ing-name" class="block text-xs text-zinc-400">Ingredient name</label>
                 <input type="text" id="add-ing-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-ing-description" class="block text-xs text-zinc-400">Description</label>
+                <textarea id="add-ing-description" name="description" rows="2" placeholder="Describe this ingredient..." class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"></textarea>
                 <label for="add-ing-price" class="block text-xs text-zinc-400">Suggested price (gold)</label>
                 <input type="number" id="add-ing-price" name="price" min="0" step="any" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="add-ing-stock" class="block text-xs text-zinc-400">Starting stock (whole units)</label>
@@ -306,6 +316,8 @@
                 <input type="hidden" id="edit-ing-id" name="id">
                 <label for="edit-ing-name" class="block text-xs text-zinc-400">Ingredient name</label>
                 <input type="text" id="edit-ing-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-ing-description" class="block text-xs text-zinc-400">Description</label>
+                <textarea id="edit-ing-description" name="description" rows="2" placeholder="Describe this ingredient..." class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"></textarea>
                 <label for="edit-ing-price" class="block text-xs text-zinc-400">Suggested price (gold)</label>
                 <input type="number" id="edit-ing-price" name="price" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="edit-ing-stock" class="block text-xs text-zinc-400">Available stock (whole units)</label>

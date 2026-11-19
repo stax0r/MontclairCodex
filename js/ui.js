@@ -48,6 +48,13 @@ function sortEntriesByName(entries) {
         .localeCompare(String(right[1].name || ''), undefined, { sensitivity: 'base' }));
 }
 
+function getIngredientDescription(ingredient) {
+    if (typeof ingredient.description === 'string' && ingredient.description.trim()) {
+        return ingredient.description.trim();
+    }
+    return typeof ingredient.locations === 'string' ? ingredient.locations.trim() : '';
+}
+
 let recipeRowId = 0;
 let isUserSignedIn = false;
 let pendingDelete = null;
@@ -306,10 +313,17 @@ export function renderPriceList() {
     }
 
     priceList.innerHTML = ings.map(([id, ingredient]) => `
-        <button type="button" data-action="show-ingredient-potions" data-id="${escapeHTML(id)}" aria-label="Show potions that use ${escapeHTML(ingredient.name)}" class="w-full bg-zinc-950 border border-zinc-800 p-3 rounded flex justify-between items-center text-left hover:border-purple-800 transition-colors">
-            <span class="text-sm font-bold">${escapeHTML(ingredient.name)}</span>
-            <span class="text-sm font-mono text-zinc-400">~${ingredient.price ?? 'Unknown'}g</span>
-        </button>
+        <article class="bg-zinc-950 border border-zinc-800 p-3 rounded">
+            <div class="flex justify-between items-center gap-3">
+                <span class="text-sm font-bold">${escapeHTML(ingredient.name)}</span>
+                <span class="text-sm font-mono text-zinc-400">~${ingredient.price ?? 'Unknown'}g</span>
+            </div>
+            ${getIngredientDescription(ingredient) ? `<p class="mt-2 line-clamp-2 text-sm text-zinc-400">${escapeHTML(getIngredientDescription(ingredient))}</p>` : ''}
+            <button type="button" data-action="show-ingredient-details" data-id="${escapeHTML(id)}" aria-label="More details about ${escapeHTML(ingredient.name)}" class="mt-2 w-full flex justify-between items-center border-t border-zinc-800 pt-2 text-left text-xs text-purple-300 hover:text-purple-200">
+                <span>More details</span>
+                <span aria-hidden="true">›</span>
+            </button>
+        </article>
     `).join('');
 }
 
@@ -340,6 +354,7 @@ export function renderStoreIngredients() {
                     <h3 class="font-bold text-zinc-100">${escapeHTML(ingredient.name)}</h3>
                     <span class="font-mono text-sm text-purple-300">~${ingredient.price ?? 'Unknown'}g</span>
                 </div>
+                ${getIngredientDescription(ingredient) ? `<p class="mt-2 whitespace-pre-line text-sm text-zinc-400">${escapeHTML(getIngredientDescription(ingredient))}</p>` : ''}
             </article>
     `).join('');
 }
@@ -519,15 +534,17 @@ function addRecipeIngredientRow(listId, ingredientId = '', quantity = 1) {
         Number.isSafeInteger(quantity) && quantity > 0 ? quantity : '';
 }
 
-function showIngredientPotions(ingredientId) {
+function showIngredientDetails(ingredientId) {
     const ingredient = state.ingredients[ingredientId];
     if (!ingredient) return;
 
-    const title = document.getElementById('ingredient-potion-title');
+    const title = document.getElementById('ingredient-detail-title');
+    const description = document.getElementById('ingredient-detail-description');
     const list = document.getElementById('ingredient-potion-list');
-    if (!title || !list) return;
+    if (!title || !description || !list) return;
 
-    title.innerText = `Potions using ${ingredient.name}`;
+    title.innerText = ingredient.name;
+    description.innerText = getIngredientDescription(ingredient) || 'No description has been recorded yet.';
     const matches = Object.entries(state.potions).filter(([, potion]) => (
         !potion.hideFromCodex &&
         !potion.hideRecipe &&
@@ -544,7 +561,7 @@ function showIngredientPotions(ingredientId) {
             </div>
         `).join('') : '<p class="text-sm text-zinc-400">No listed potions currently use this ingredient.</p>';
 
-    openModal('modal-ingredient-potions');
+    openModal('modal-ingredient-details');
 }
 
 function collectRecipe(listId) {
@@ -591,6 +608,7 @@ function openIngredientEditor(id) {
 
     document.getElementById('edit-ing-id').value = id;
     document.getElementById('edit-ing-name').value = ingredient.name || '';
+    document.getElementById('edit-ing-description').value = getIngredientDescription(ingredient);
     document.getElementById('edit-ing-price').value = ingredient.price ?? 0;
     document.getElementById('edit-ing-stock').value = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
     document.getElementById('edit-ing-threshold').value = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
@@ -818,8 +836,8 @@ export function initUI() {
     });
 
     document.getElementById('price-list')?.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-action="show-ingredient-potions"]');
-        if (btn) showIngredientPotions(btn.dataset.id);
+        const btn = e.target.closest('[data-action="show-ingredient-details"]');
+        if (btn) showIngredientDetails(btn.dataset.id);
     });
 
     document.getElementById('btn-open-login')?.addEventListener('click', () => openModal('modal-login'));
@@ -1083,6 +1101,7 @@ export function initUI() {
         try {
             await createIngredient({
                 name: document.getElementById('add-ing-name').value,
+                description: document.getElementById('add-ing-description').value,
                 price: Number(document.getElementById('add-ing-price').value),
                 stock: Number(document.getElementById('add-ing-stock').value),
                 restockThreshold: Number(document.getElementById('add-ing-threshold').value)
@@ -1123,6 +1142,7 @@ export function initUI() {
         try {
             await updateIngredient(document.getElementById('edit-ing-id').value, {
                 name: document.getElementById('edit-ing-name').value,
+                description: document.getElementById('edit-ing-description').value,
                 price: Number(document.getElementById('edit-ing-price').value),
                 stock: Number(document.getElementById('edit-ing-stock').value),
                 restockThreshold: Number(document.getElementById('edit-ing-threshold').value)

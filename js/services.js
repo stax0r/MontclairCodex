@@ -108,7 +108,7 @@ export function updatePotion(id, {
     });
 }
 
-export function createIngredient({ name, price, stock, restockThreshold = 0 }) {
+export function createIngredient({ name, description = '', price, stock, restockThreshold = 0 }) {
     validateQuantity(stock);
     validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
@@ -118,20 +118,28 @@ export function createIngredient({ name, price, stock, restockThreshold = 0 }) {
     const id = Date.now().toString();
     return set(ref(db, `ingredients/${id}`), {
         name,
+        description: description.trim() || null,
         price,
         stock,
         restockThreshold
     });
 }
 
-export function updateIngredient(id, { name, price, stock, restockThreshold = 0 }) {
+export function updateIngredient(id, { name, description = '', price, stock, restockThreshold = 0 }) {
     validateQuantity(stock);
     validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
         throw new Error('INVALID_PRICE');
     }
 
-    return updateData(ref(db, `ingredients/${id}`), { name, price, stock, restockThreshold });
+    return updateData(ref(db, `ingredients/${id}`), {
+        name,
+        description: description.trim() || null,
+        locations: null,
+        price,
+        stock,
+        restockThreshold
+    });
 }
 
 export async function increaseIngredientStock(id, quantity) {
