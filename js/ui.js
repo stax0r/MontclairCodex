@@ -62,14 +62,10 @@ function getIngredientDescription(ingredient) {
     return typeof ingredient.locations === 'string' ? ingredient.locations.trim() : '';
 }
 
-function formatIngredientUnitPrice(price) {
-    return `~${price ?? 'Unknown'}g / unit`;
-}
-
 function renderIngredientPrice(price, priceClass) {
     const numericPrice = Number(price);
     if (Number.isFinite(numericPrice) && numericPrice > 0) {
-        return `<span class="${priceClass}">${formatIngredientUnitPrice(numericPrice)}</span>`;
+        return `<span class="${priceClass}">${numericPrice}g / unit</span>`;
     }
     return '<span class="text-right text-xs text-zinc-500">No fair price found yet</span>';
 }
@@ -106,6 +102,8 @@ export function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast-item toast-${type}`;
     toast.innerText = message;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -265,6 +263,7 @@ function renderSatchelSummary() {
     if (totalQty > 0) floatBtn?.classList.remove('hidden');
     else floatBtn?.classList.add('hidden');
     if (countSpan) countSpan.innerText = totalQty;
+    updateFloatingActionLayout();
 
     const totalCost = state.satchel.reduce((sum, item) => {
         const potion = state.potions[item.id];
@@ -280,6 +279,23 @@ function renderWeighingScaleSummary() {
 
     floatButton?.classList.toggle('hidden', totalQuantity === 0);
     if (count) count.innerText = totalQuantity;
+    updateFloatingActionLayout();
+}
+
+function updateFloatingActionLayout() {
+    const satchelButton = document.getElementById('floating-satchel');
+    const scaleButton = document.getElementById('floating-weighing-scale');
+    const satchelVisible = satchelButton && !satchelButton.classList.contains('hidden');
+    const scaleVisible = scaleButton && !scaleButton.classList.contains('hidden');
+
+    scaleButton?.classList.toggle('bottom-6', !satchelVisible);
+    scaleButton?.classList.toggle('bottom-24', Boolean(satchelVisible));
+
+    document.body.dataset.floatingActions = satchelVisible && scaleVisible
+        ? 'stacked'
+        : satchelVisible || scaleVisible
+            ? 'single'
+            : 'none';
 }
 
 function getWeighingScaleLineDetails(item) {

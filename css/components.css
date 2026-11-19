@@ -235,6 +235,18 @@ button:focus-visible {
     padding-top: 0.75rem;
 }
 
+#toast-container {
+    transition: bottom 160ms ease;
+}
+
+body[data-floating-actions="single"] #toast-container {
+    bottom: 5rem;
+}
+
+body[data-floating-actions="stacked"] #toast-container {
+    bottom: 9.5rem;
+}
+
 .potion-card__description {
     margin-top: 0.75rem;
     color: #a1a1aa;
