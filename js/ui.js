@@ -27,6 +27,7 @@ import {
     updateIngredient,
     increaseIngredientStock,
     dispatchOrder,
+    generateOrderId,
     deletePotion,
     deleteIngredient,
     brewBatch
@@ -91,6 +92,7 @@ let recipeRowId = 0;
 let isUserSignedIn = false;
 let pendingDelete = null;
 let isBatchBrewing = false;
+let pendingOrder = null;
 
 // ==========================================
 // TOAST SYSTEM
@@ -1057,6 +1059,90 @@ export function initUI() {
     document.getElementById('modal-confirm-delete')?.addEventListener('close', () => {
         pendingDelete = null;
     });
+    document.getElementById('modal-confirm-order')?.addEventListener('close', () => {
+        if (!pendingOrder?.sending) pendingOrder = null;
+    });
+    document.getElementById('modal-confirm-order')?.addEventListener('cancel', (e) => {
+        if (pendingOrder?.sending) e.preventDefault();
+    });
+    document.getElementById('btn-cancel-order')?.addEventListener('click', () => {
+        closeModal('modal-confirm-order');
+    });
+    document.getElementById('btn-copy-order-id')?.addEventListener('click', async () => {
+        const orderId = document.getElementById('confirm-order-id')?.innerText || '';
+        if (!orderId) return;
+        try {
+            await navigator.clipboard.writeText(orderId);
+            showToast('Order ID copied.', 'success');
+        } catch {
+            const range = document.createRange();
+            range.selectNodeContents(document.getElementById('confirm-order-id'));
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            showToast('Order ID selected. Copy it manually.', 'success');
+        }
+    });
+    document.getElementById('btn-confirm-order')?.addEventListener('click', async (e) => {
+        if (!pendingOrder) return;
+        if (pendingOrder.sent) {
+            closeModal('modal-confirm-order');
+            return;
+        }
+
+        const order = pendingOrder;
+        order.sending = true;
+        const button = e.currentTarget;
+        const cancelButton = document.getElementById('btn-cancel-order');
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+        if (cancelButton) {
+            cancelButton.disabled = true;
+            cancelButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        try {
+            await dispatchOrder(order);
+            order.sending = false;
+            order.sent = true;
+            showToast(`Order sent. Remember to send ${order.orderId} to Silas Montclair in game.`, 'success');
+
+            document.getElementById('confirm-order-title').innerText = 'Order dispatched';
+            document.getElementById('confirm-order-details').innerHTML =
+                `<p><strong>Discord delivery:</strong> Successful</p>` +
+                `<p>Keep the order ID below for your in-game message.</p>`;
+            document.getElementById('confirm-order-warning').innerHTML =
+                `Send <strong>${escapeHTML(order.orderId)}</strong> to <strong>Silas Montclair</strong> in game. Without this message, the order may be invalid.`;
+            cancelButton?.classList.add('hidden');
+            button.innerText = 'Done';
+            button.disabled = false;
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            clearSatchel();
+            renderSatchel();
+            closeModal('modal-satchel');
+            document.getElementById('order-form')?.reset();
+        } catch (err) {
+            order.sending = false;
+            order.sent = true;
+            button.disabled = false;
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+            cancelButton?.classList.add('hidden');
+            button.innerText = 'Close';
+            document.getElementById('confirm-order-title').innerText = 'Delivery could not be confirmed';
+            document.getElementById('confirm-order-details').innerHTML =
+                `<p><strong>Do not resubmit this order.</strong></p>` +
+                `<p>The webhook response was unavailable or failed.</p>`;
+            document.getElementById('confirm-order-warning').innerHTML =
+                `Check Discord before contacting <strong>Silas Montclair</strong>. Keep order ID <strong>${escapeHTML(order.orderId)}</strong>.`;
+            if (err.message === 'WEBHOOK_UNCONFIGURED') {
+                showToast('Discord webhook is not configured. Please try again later.', 'error');
+            } else if (err.message.startsWith('HTTP_')) {
+                showToast(`Error dispatching: ${err.message.replace('HTTP_', '')}`, 'error');
+            } else {
+                showToast('Network error. The order was not sent.', 'error');
+            }
+        }
+    });
 
     document.getElementById('price-list')?.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="show-ingredient-details"]');
@@ -1326,28 +1412,52 @@ export function initUI() {
             return;
         }
 
-        try {
-            await dispatchOrder({
-                name: document.getElementById('order-name').value,
-                discord: document.getElementById('order-discord').value,
-                notes: document.getElementById('order-notes').value,
-                satchel: state.satchel,
-                potions: state.potions
-            });
-            showToast('Order dispatched to Discord!', 'success');
-            clearSatchel();
-            renderSatchel();
-            closeModal('modal-satchel');
-            e.target.reset();
-        } catch (err) {
-            if (err.message === 'WEBHOOK_UNCONFIGURED') {
-                showToast('Discord webhook is not configured. Please try again later.', 'error');
-            } else if (err.message.startsWith('HTTP_')) {
-                showToast(`Error dispatching: ${err.message.replace('HTTP_', '')}`, 'error');
-            } else {
-                showToast('Network error.', 'error');
-            }
+        const name = document.getElementById('order-name').value.trim();
+        if (!name) {
+            showToast('Enter a character name.', 'error');
+            return;
         }
+
+        const satchel = state.satchel.map((item) => ({ ...item }));
+        const orderId = generateOrderId();
+        const potions = Object.fromEntries(Object.entries(state.potions).map(([id, potion]) => [
+            id,
+            { ...potion }
+        ]));
+        pendingOrder = {
+            orderId,
+            name,
+            discord: document.getElementById('order-discord').value.trim(),
+            notes: document.getElementById('order-notes').value.trim(),
+            satchel,
+            potions,
+            sent: false,
+            sending: false
+        };
+
+        const itemLines = satchel.map((item) => {
+            const potion = potions[item.id];
+            return `<p><strong>${item.qty}x ${escapeHTML(potion?.name || 'Unavailable item')}</strong></p>`;
+        }).join('');
+        document.getElementById('confirm-order-title').innerText = 'Confirm your order';
+        document.getElementById('confirm-order-details').innerHTML =
+            `<p><strong>Character:</strong> ${escapeHTML(name)}</p>` +
+            itemLines;
+        document.getElementById('confirm-order-id').innerText = orderId;
+        document.getElementById('confirm-order-warning').innerHTML =
+            `Copy this ID and send it to <strong>Silas Montclair</strong> in game. Orders without the matching in-game message may be invalid.`;
+        const cancelButton = document.getElementById('btn-cancel-order');
+        if (cancelButton) {
+            cancelButton.disabled = false;
+            cancelButton.classList.remove('hidden', 'opacity-50', 'cursor-not-allowed');
+        }
+        const confirmButton = document.getElementById('btn-confirm-order');
+        if (confirmButton) {
+            confirmButton.innerText = 'Confirm & Send';
+            confirmButton.disabled = false;
+            confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        openModal('modal-confirm-order');
     });
 
     // Admin batch simulator

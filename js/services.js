@@ -220,6 +220,16 @@ export async function brewBatch(batchQueue, potions) {
 // ==========================================
 // DISCORD WEBHOOKS
 // ==========================================
+export function generateOrderId() {
+    const bytes = new Uint32Array(1);
+    if (globalThis.crypto?.getRandomValues) {
+        globalThis.crypto.getRandomValues(bytes);
+    } else {
+        bytes[0] = Math.floor(Math.random() * 0x100000000);
+    }
+    return `MC-${bytes[0].toString(16).toUpperCase().padStart(8, '0')}`;
+}
+
 function isWebhookConfigured() {
     try {
         const url = new URL(DISCORD_WEBHOOK_URL);
@@ -247,7 +257,10 @@ async function postWebhook(payload) {
     }
 }
 
-export async function dispatchOrder({ name, discord, notes, satchel, potions }) {
+export async function dispatchOrder({ orderId, name, discord, notes, satchel, potions }) {
+    if (!/^MC-[A-Z0-9]{8}$/.test(orderId || '')) {
+        throw new Error('INVALID_ORDER_ID');
+    }
     const orderLines = [];
     let total = 0;
 
@@ -265,6 +278,7 @@ export async function dispatchOrder({ name, discord, notes, satchel, potions }) 
             title: "🧪 New Store Order",
             color: 7419530, // Purple
             fields: [
+                { name: "Order ID", value: orderId, inline: true },
                 { name: "Client", value: name, inline: true },
                 { name: "Discord", value: discord || "N/A", inline: true },
                 { name: "Total Cost", value: `${total} Gold`, inline: true },
