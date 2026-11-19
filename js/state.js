@@ -6,6 +6,7 @@ export const state = {
     satchel: [],
     batchQueue: [],
     selectedCategory: 'All',
+    selectedCodexCategory: 'All',
     searchQuery: ''
 };
 
@@ -19,6 +20,10 @@ export function setIngredients(ingredients) {
 
 export function setCategory(category) {
     state.selectedCategory = category;
+}
+
+export function setCodexCategory(category) {
+    state.selectedCodexCategory = category;
 }
 
 export function setSearchQuery(query) {

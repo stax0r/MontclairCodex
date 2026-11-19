@@ -1,6 +1,7 @@
 import {
     state,
     setCategory,
+    setCodexCategory,
     setSearchQuery,
     addSatchelItem,
     removeSatchelItem,
@@ -136,8 +137,15 @@ export function renderStore() {
     const filters = document.getElementById('category-filters');
     if (!grid || !filters) return;
 
-    const potionArray = Object.entries(state.potions).map(([id, p]) => ({ id, ...p }));
-    const storefrontPotions = potionArray.filter((p) => !p.hidden);
+    const potionArray = Object.entries(state.potions)
+        .map(([id, p]) => ({ id, ...p }))
+        .filter((p) => !p.hidden)
+        .sort((left, right) => {
+            const priceDifference = (Number.isFinite(left.salePrice) ? left.salePrice : 0) -
+                (Number.isFinite(right.salePrice) ? right.salePrice : 0);
+            return priceDifference || String(left.name || '').localeCompare(String(right.name || ''), undefined, { sensitivity: 'base' });
+        });
+    const storefrontPotions = potionArray;
     const categories = ['All', ...new Set(storefrontPotions.map((p) => p.category || 'General'))];
     if (!categories.includes(state.selectedCategory)) setCategory('All');
 
@@ -253,31 +261,42 @@ export function renderStoreIngredients() {
         return;
     }
 
-    ingredientList.innerHTML = lowStockIngredients.map(([, ingredient]) => {
-        const stock = Number.isSafeInteger(ingredient.stock) ? ingredient.stock : 0;
-        const threshold = Number.isSafeInteger(ingredient.restockThreshold) ? ingredient.restockThreshold : 0;
-        return `
+    ingredientList.innerHTML = lowStockIngredients.map(([, ingredient]) => `
             <article class="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
                 <div class="flex justify-between items-start gap-3">
                     <h3 class="font-bold text-zinc-100">${escapeHTML(ingredient.name)}</h3>
                     <span class="font-mono text-sm text-purple-300">~${ingredient.price ?? 'Unknown'}g</span>
                 </div>
-                <p class="mt-2 text-sm text-zinc-400">${stock} in stock · Low-stock threshold: ${threshold}</p>
             </article>
-        `;
-    }).join('');
+    `).join('');
 }
 
 export function renderCodexPotions() {
     const potionList = document.getElementById('codex-potion-list');
-    if (!potionList) return;
+    const filters = document.getElementById('codex-category-filters');
+    if (!potionList || !filters) return;
 
-    const potions = sortEntriesByName(Object.entries(state.potions).filter(([, potion]) => !potion.hideFromCodex));
-    if (potions.length === 0) {
-        potionList.innerHTML = '<p class="text-zinc-500 text-sm col-span-full">No potions logged yet.</p>';
+    const visiblePotions = Object.entries(state.potions).filter(([, potion]) => !potion.hideFromCodex);
+    const categories = ['All', ...new Set(visiblePotions.map(([, potion]) => potion.category || 'General'))];
+    if (!categories.includes(state.selectedCodexCategory)) setCodexCategory('All');
+
+    filters.innerHTML = categories.map((category) => `
+        <button type="button" class="px-3 py-1 text-xs rounded-full border ${state.selectedCodexCategory === category ? 'bg-purple-900 border-purple-700 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'} codex-cat-filter" data-cat="${escapeHTML(category)}">
+            ${escapeHTML(category)}
+        </button>
+    `).join('');
+
+    const categoryPotions = state.selectedCodexCategory === 'All'
+        ? visiblePotions
+        : visiblePotions.filter(([, potion]) => (potion.category || 'General') === state.selectedCodexCategory);
+    if (categoryPotions.length === 0) {
+        potionList.innerHTML = visiblePotions.length
+            ? '<p class="text-zinc-500 text-sm col-span-full">No potions found in this category.</p>'
+            : '<p class="text-zinc-500 text-sm col-span-full">No potions logged yet.</p>';
         return;
     }
 
+    const potions = sortEntriesByName(categoryPotions);
     potionList.innerHTML = potions.map(([, potion]) => {
         const recipe = Object.entries(potion.ingredients || {});
         return `
@@ -488,7 +507,7 @@ export function renderBatchSelect() {
     if (!select) return;
 
     select.innerHTML = '<option value="">Select Potion...</option>' +
-        Object.entries(state.potions)
+        sortEntriesByName(Object.entries(state.potions))
             .map(([id, p]) => `<option value="${escapeHTML(id)}">${escapeHTML(p.name)}</option>`)
             .join('');
 }
@@ -733,6 +752,13 @@ export function initUI() {
         if (!btn) return;
         setCategory(btn.dataset.cat);
         renderStore();
+    });
+
+    document.getElementById('codex-category-filters')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.codex-cat-filter');
+        if (!btn) return;
+        setCodexCategory(btn.dataset.cat);
+        renderCodexPotions();
     });
 
     document.getElementById('catalog-grid')?.addEventListener('click', (e) => {
