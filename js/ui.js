@@ -675,7 +675,7 @@ export function renderInventory() {
                 <p class="text-xs text-zinc-500">${stock} units · ${renderIngredientPrice(ingredient.price, 'text-xs text-zinc-500')} · Threshold: ${threshold}</p>
             </div>
             <div class="flex items-center gap-2">
-                <input type="number" min="1" step="1" value="1" aria-label="Units to add to ${escapeHTML(ingredient.name)}" class="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-center">
+                <input type="number" min="1" step="1" value="0" aria-label="Units to add to ${escapeHTML(ingredient.name)}" class="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-center">
                 <button type="button" data-action="add-ingredient-stock" data-id="${escapeHTML(id)}" class="rounded border border-green-800 bg-green-950 px-3 py-2 text-sm font-semibold text-green-300 hover:bg-green-900">Add stock</button>
                 <button type="button" data-action="edit-ingredient" data-id="${escapeHTML(id)}" aria-label="Edit ${escapeHTML(ingredient.name)}" title="Edit ingredient" class="text-lg rounded p-2 hover:bg-zinc-800">⚙️</button>
             </div>

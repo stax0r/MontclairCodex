@@ -156,9 +156,9 @@ button:focus-visible {
 }
 
 .ingredient-card {
-    height: 18rem;
+    height: 16rem;
     min-height: 0;
-    padding: 0.875rem;
+    padding: 0.75rem;
 }
 
 .ingredient-card__main {
