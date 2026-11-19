@@ -60,32 +60,57 @@ function validatePotion({ salePrice, ingredients = {} }) {
     }
 }
 
-export function createPotion({ name, category, salePrice, ingredients = {}, hidden = false }) {
+export function createPotion({
+    name,
+    category,
+    description,
+    salePrice,
+    ingredients = {},
+    hidden = false,
+    hideRecipe = false,
+    hideFromCodex = false
+}) {
     validatePotion({ salePrice, ingredients });
 
     const id = Date.now().toString();
     return set(ref(db, `potions/${id}`), {
         name,
         category: category || 'General',
+        description: description?.trim() || null,
         salePrice,
         ingredients,
-        hidden: Boolean(hidden)
+        hidden: Boolean(hidden),
+        hideRecipe: Boolean(hideRecipe),
+        hideFromCodex: Boolean(hideFromCodex)
     });
 }
 
-export function updatePotion(id, { name, category, salePrice, ingredients = {}, hidden = false }) {
+export function updatePotion(id, {
+    name,
+    category,
+    description,
+    salePrice,
+    ingredients = {},
+    hidden = false,
+    hideRecipe = false,
+    hideFromCodex = false
+}) {
     validatePotion({ salePrice, ingredients });
     return updateData(ref(db, `potions/${id}`), {
         name,
         category: category || 'General',
+        description: description?.trim() || null,
         salePrice,
         ingredients: Object.keys(ingredients).length ? ingredients : null,
-        hidden: Boolean(hidden)
+        hidden: Boolean(hidden),
+        hideRecipe: Boolean(hideRecipe),
+        hideFromCodex: Boolean(hideFromCodex)
     });
 }
 
-export function createIngredient({ name, price, stock }) {
+export function createIngredient({ name, price, stock, restockThreshold = 0 }) {
     validateQuantity(stock);
+    validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
         throw new Error('INVALID_PRICE');
     }
@@ -94,17 +119,19 @@ export function createIngredient({ name, price, stock }) {
     return set(ref(db, `ingredients/${id}`), {
         name,
         price,
-        stock
+        stock,
+        restockThreshold
     });
 }
 
-export function updateIngredient(id, { name, price, stock }) {
+export function updateIngredient(id, { name, price, stock, restockThreshold = 0 }) {
     validateQuantity(stock);
+    validateQuantity(restockThreshold);
     if (!Number.isFinite(price) || price < 0) {
         throw new Error('INVALID_PRICE');
     }
 
-    return updateData(ref(db, `ingredients/${id}`), { name, price, stock });
+    return updateData(ref(db, `ingredients/${id}`), { name, price, stock, restockThreshold });
 }
 
 export function deletePotion(id) {

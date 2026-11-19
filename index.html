@@ -44,15 +44,26 @@
             <div class="space-y-2">
                 <p class="text-xs uppercase tracking-[0.25em] text-purple-400">Montclair Apothecary</p>
                 <h2 class="text-3xl font-bold text-zinc-100">Remedies for the road ahead.</h2>
-                <p class="text-sm text-zinc-400">Browse the shelves and place orders for potions, including custom brews.</p>
+                <p class="text-sm text-zinc-400">Browse the shelves and place orders for potions.</p>
             </div>
-            <div class="flex flex-col md:flex-row justify-between gap-4 bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                <input type="text" id="store-search" placeholder="Search potions..." class="w-full md:w-64 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-200">
-                <div id="category-filters" class="flex flex-wrap gap-2"></div>
+            <div class="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-fit" role="tablist" aria-label="Storefront sections">
+                <button type="button" id="store-tab-potions" class="nav-tab active px-4 py-2 text-sm font-semibold rounded transition-colors" role="tab" aria-selected="true" aria-controls="store-panel-potions">Potions</button>
+                <button type="button" id="store-tab-ingredients" class="nav-tab px-4 py-2 text-sm font-semibold rounded text-zinc-500 hover:text-zinc-300 transition-colors" role="tab" aria-selected="false" aria-controls="store-panel-ingredients">Ingredients wanted</button>
             </div>
-            
-            <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <p class="text-zinc-500 text-sm col-span-full">No potions available yet.</p>
+            <div id="store-panel-potions" role="tabpanel" aria-labelledby="store-tab-potions" class="space-y-6">
+                <div class="flex flex-col md:flex-row justify-between gap-4 bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                    <input type="text" id="store-search" placeholder="Search potions..." class="w-full md:w-64 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-200">
+                    <div id="category-filters" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <p class="text-zinc-500 text-sm col-span-full">No potions available yet.</p>
+                </div>
+            </div>
+            <div id="store-panel-ingredients" role="tabpanel" aria-labelledby="store-tab-ingredients" class="hidden bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <h2 class="text-lg font-bold text-zinc-100 mb-4">Ingredients we're looking for</h2>
+                <div id="store-ingredient-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <p class="text-zinc-500 text-sm col-span-full">No ingredients are currently below their low-stock thresholds.</p>
+                </div>
             </div>
         </section>
 
@@ -113,10 +124,20 @@
 
         <!-- CODEX VIEW -->
         <section id="view-codex" class="hidden space-y-6">
-            <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-                <h2 class="text-lg font-bold text-zinc-100 mb-4">Suggested prices</h2>
+            <div class="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-fit" role="tablist" aria-label="Codex sections">
+                <button type="button" id="codex-tab-ingredients" class="nav-tab active px-4 py-2 text-sm font-semibold rounded transition-colors" role="tab" aria-selected="true" aria-controls="codex-panel-ingredients">Ingredients</button>
+                <button type="button" id="codex-tab-potions" class="nav-tab px-4 py-2 text-sm font-semibold rounded text-zinc-500 hover:text-zinc-300 transition-colors" role="tab" aria-selected="false" aria-controls="codex-panel-potions">Potions</button>
+            </div>
+            <div id="codex-panel-ingredients" role="tabpanel" aria-labelledby="codex-tab-ingredients" class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <h2 class="text-lg font-bold text-zinc-100 mb-4">Ingredients</h2>
                 <div id="price-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <p class="text-zinc-500 text-sm col-span-full">No ingredients logged yet.</p>
+                </div>
+            </div>
+            <div id="codex-panel-potions" role="tabpanel" aria-labelledby="codex-tab-potions" class="hidden bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <h2 class="text-lg font-bold text-zinc-100 mb-4">Potions</h2>
+                <div id="codex-potion-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <p class="text-zinc-500 text-sm col-span-full">No potions logged yet.</p>
                 </div>
             </div>
         </section>
@@ -182,11 +203,21 @@
                 <input type="text" id="add-pot-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="add-pot-cat" class="block text-xs text-zinc-400">Category</label>
                 <input type="text" id="add-pot-cat" name="category" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-pot-description" class="block text-xs text-zinc-400">Description</label>
+                <textarea id="add-pot-description" name="description" rows="3" placeholder="Describe what this potion does..." class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"></textarea>
                 <label for="add-pot-price" class="block text-xs text-zinc-400">Price (gold)</label>
                 <input type="number" id="add-pot-price" name="salePrice" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label class="flex items-center gap-2 text-sm text-zinc-300">
                     <input type="checkbox" id="add-pot-hidden" name="hidden" class="accent-purple-600">
                     <span>Hide from storefront (still shown in the Codex)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-zinc-300">
+                    <input type="checkbox" id="add-pot-hide-recipe" name="hideRecipe" class="accent-purple-600">
+                    <span>Hide recipe in the Codex</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-zinc-300">
+                    <input type="checkbox" id="add-pot-hide-codex" name="hideFromCodex" class="accent-purple-600">
+                    <span>Hide completely from the Codex</span>
                 </label>
                 <div class="space-y-2 pt-2">
                     <div class="flex items-center justify-between">
@@ -212,6 +243,8 @@
                 <input type="number" id="add-ing-price" name="price" min="0" step="any" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="add-ing-stock" class="block text-xs text-zinc-400">Starting stock (whole units)</label>
                 <input type="number" id="add-ing-stock" name="stock" min="0" step="1" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="add-ing-threshold" class="block text-xs text-zinc-400">Low-stock threshold (whole units)</label>
+                <input type="number" id="add-ing-threshold" name="restockThreshold" min="0" step="1" value="0" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Ingredient</button>
             </form>
         </div>
@@ -227,11 +260,21 @@
                 <input type="text" id="edit-pot-name" name="name" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="edit-pot-cat" class="block text-xs text-zinc-400">Category</label>
                 <input type="text" id="edit-pot-cat" name="category" class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-pot-description" class="block text-xs text-zinc-400">Description</label>
+                <textarea id="edit-pot-description" name="description" rows="3" placeholder="Describe what this potion does..." class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm"></textarea>
                 <label for="edit-pot-price" class="block text-xs text-zinc-400">Price (gold)</label>
                 <input type="number" id="edit-pot-price" name="salePrice" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label class="flex items-center gap-2 text-sm text-zinc-300">
                     <input type="checkbox" id="edit-pot-hidden" name="hidden" class="accent-purple-600">
                     <span>Hide from storefront (still shown in the Codex)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-zinc-300">
+                    <input type="checkbox" id="edit-pot-hide-recipe" name="hideRecipe" class="accent-purple-600">
+                    <span>Hide recipe in the Codex</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-zinc-300">
+                    <input type="checkbox" id="edit-pot-hide-codex" name="hideFromCodex" class="accent-purple-600">
+                    <span>Hide completely from the Codex</span>
                 </label>
                 <div class="space-y-2 pt-2">
                     <div class="flex items-center justify-between">
@@ -259,6 +302,8 @@
                 <input type="number" id="edit-ing-price" name="price" min="0" step="any" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <label for="edit-ing-stock" class="block text-xs text-zinc-400">Available stock (whole units)</label>
                 <input type="number" id="edit-ing-stock" name="stock" min="0" step="1" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
+                <label for="edit-ing-threshold" class="block text-xs text-zinc-400">Low-stock threshold (whole units)</label>
+                <input type="number" id="edit-ing-threshold" name="restockThreshold" min="0" step="1" required class="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm">
                 <button type="button" id="btn-delete-ingredient" class="w-full border border-red-900 text-red-300 hover:bg-red-950 py-2 rounded text-sm">Delete Ingredient</button>
                 <button type="submit" class="w-full bg-purple-900 hover:bg-purple-800 py-2 rounded text-sm">Save Changes</button>
             </form>

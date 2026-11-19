@@ -6,6 +6,8 @@ import {
     renderStore,
     renderSatchel,
     renderPriceList,
+    renderStoreIngredients,
+    renderCodexPotions,
     renderInventory,
     renderRecipeIngredients,
     renderBatchSelect,
@@ -22,6 +24,7 @@ function bootstrap() {
     subscribePotions((potions) => {
         setPotions(potions);
         renderStore();
+        renderCodexPotions();
         renderInventory();
         renderSatchel();
         renderBatchSelect();
@@ -31,6 +34,8 @@ function bootstrap() {
     subscribeIngredients((ingredients) => {
         setIngredients(ingredients);
         renderPriceList();
+        renderStoreIngredients();
+        renderCodexPotions();
         renderInventory();
         renderRecipeIngredients();
         renderBatchQueue();
